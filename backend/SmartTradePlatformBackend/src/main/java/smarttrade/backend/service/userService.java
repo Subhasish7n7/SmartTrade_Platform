@@ -9,6 +9,11 @@ import java.util.Optional;
 @Service
 public class userService{
     userRepo userRepo;
+
+    public userService(userRepo userRepo) {
+        this.userRepo = userRepo;
+    }
+
     public List<userEntity> getAllusers() {
         return userRepo.findAll();
     }

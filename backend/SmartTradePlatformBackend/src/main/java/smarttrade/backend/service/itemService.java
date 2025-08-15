@@ -10,6 +10,9 @@ import java.util.Optional;
 @Service
 public class itemService {
     itemRepo itemRepo;
+    itemService(itemRepo itemRepo){
+        this.itemRepo=itemRepo;
+    }
     public List<itemEntity> GetAllItems() {
         return itemRepo.findAll();
     }
