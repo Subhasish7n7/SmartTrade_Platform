@@ -28,10 +28,10 @@ public class itemController {
     }
     @GetMapping("items/{item_id}")
     public ResponseEntity<itemDto> getItems(@PathVariable("item_id") Long item_id){
-        itemEntity item= itemService.GetItem(item_id).orElseThrow(
-                ()-> new IllegalArgumentException("object not found"));
-
-        return new ResponseEntity<>(itemMapper.mapFrom(item), HttpStatus.OK);
+        return itemService.GetItem(item_id).map(itemEntity ->{
+            itemDto itemDto= itemMapper.mapFrom(itemEntity);
+            return new ResponseEntity<>(itemDto,HttpStatus.OK);
+                }).orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
     @PostMapping("/items")
     public ResponseEntity<itemDto> addItem(@RequestBody itemDto item){
@@ -41,7 +41,7 @@ public class itemController {
     }
     @PatchMapping("/items/{item_id}")
     public ResponseEntity<itemDto> UpdateItem(@PathVariable("item_id") Long item_id,
-                                                 itemDto item){
+                                                 @RequestBody itemDto item){
         if(itemService.GetItem(item_id).isEmpty()){
             return new ResponseEntity<>(item,HttpStatus.NOT_FOUND);
         }
@@ -54,4 +54,33 @@ public class itemController {
         itemService.deleteItem(item_id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+    @GetMapping("/items/nearby")
+    public ResponseEntity<List<itemDto>> getNearbyItems(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10") double radiusKm
+    ) {
+        List<itemDto> items = itemService.getNearbyItems(lat, lng, radiusKm)
+                .stream().map(itemMapper::mapFrom).toList();
+        return ResponseEntity.ok(items);
+    }
+    @GetMapping("/items/search")
+    public ResponseEntity<List<itemDto>> searchItems(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<String> labels,
+            @RequestParam(required = false) String name
+    ) {
+        List<itemDto> items = itemService.searchItems(category, labels, name)
+                .stream().map(itemMapper::mapFrom).toList();
+        return ResponseEntity.ok(items);
+    }
+    @PatchMapping("/items/{item_id}/availability")
+    public ResponseEntity<Void> toggleAvailability(@PathVariable Long item_id,
+                                                   @RequestParam boolean available) {
+        itemService.updateAvailability(item_id, available);
+        return ResponseEntity.ok().build();
+    }
+
+
+
 }

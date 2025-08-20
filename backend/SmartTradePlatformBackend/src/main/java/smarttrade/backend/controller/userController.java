@@ -40,7 +40,7 @@ public class userController {
         }
         @PatchMapping("/users/{user_id}")
         public ResponseEntity<userDto> UpdateItem(@PathVariable("user_id") Long user_id,
-                                                     userDto user){
+                                                    @RequestBody userDto user){
             if(userService.GetUser(user_id).isEmpty()){
                 return new ResponseEntity<>(user,HttpStatus.NOT_FOUND);
             }
