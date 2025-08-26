@@ -1,5 +1,9 @@
 package smarttrade.backend.service;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import smarttrade.backend.entities.itemEntity;
 import smarttrade.backend.repository.itemRepo;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,7 @@ public class itemService {
         return itemRepo.save(item);
     }
 
+
     public itemEntity updateItem(Long itemId, itemEntity item) {
         item.setItem_id(itemId);
         return itemRepo.save(item);
@@ -36,15 +41,10 @@ public class itemService {
     }
 
     public List<itemEntity> getNearbyItems(double lat, double lng, double radiusKm) {
-        List<itemEntity> allItems = itemRepo.findAll();
-        return allItems.stream()
-                .filter(item -> {
-                    if (!item.isAvailable()) return false;
-                    double distance = calculateDistance(lat, lng, item.getLatitude(), item.getLongitude());
-                    return distance <= radiusKm;
-                })
-                .collect(Collectors.toList());
+        double radiusMeters = radiusKm * 1000;
+        return itemRepo.findNearbyItems(lat, lng, radiusMeters);
     }
+
 
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371; // Radius of the earth in km

@@ -16,13 +16,13 @@ public class itemDto {
     private int item_NewPrice;
     private int item_GeneratedPrice;
     private int item_UserPrice;
-    private userEntity user;
+    private userDto user;
     private String description;              // Item description
     private String category;                 // Category (e.g., electronics, books)
     private String condition;                // "new", "used - like new", "used - good", etc.
     private List<String> labels;            // Keywords, e.g., ["gaming", "intel", "DDR4"]
-    private double latitude;                // For location-based filtering
-    private double longitude;
+    private Double latitude;                // For location-based filtering
+    private Double longitude;
     private boolean isAvailable = true;     // Mark item as available/traded
     private boolean isForTrade = false;     // Whether item is marked for trade
     private boolean isForSale = true;       // Whether item is marked for sale

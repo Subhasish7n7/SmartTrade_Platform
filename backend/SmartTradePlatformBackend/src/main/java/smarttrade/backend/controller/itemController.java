@@ -1,6 +1,6 @@
 package smarttrade.backend.controller;
 
-import org.modelmapper.ModelMapper;
+
 import smarttrade.backend.Mappers.itemMapperImpl;
 import smarttrade.backend.dto.itemDto;
 import smarttrade.backend.entities.itemEntity;
@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @RestController
 public class itemController {
