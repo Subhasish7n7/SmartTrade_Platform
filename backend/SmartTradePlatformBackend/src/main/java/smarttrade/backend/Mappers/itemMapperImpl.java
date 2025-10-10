@@ -1,15 +1,12 @@
 package smarttrade.backend.Mappers;
 
 import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeMap;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.itemDto;
-import smarttrade.backend.dto.userDto;
 import smarttrade.backend.entities.itemEntity;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
-import smarttrade.backend.entities.userEntity;
 
 @Component
 public class itemMapperImpl implements Mapper<itemEntity, itemDto> {
@@ -25,7 +22,7 @@ public class itemMapperImpl implements Mapper<itemEntity, itemDto> {
     public itemEntity mapTo(itemDto dto) {
         if (dto == null) return null;
 
-        itemEntity entity = modelMapper.map(dto, itemEntity.class); // Will now use configured TypeMap
+        itemEntity entity = modelMapper.map(dto, itemEntity.class);
 
         if (dto.getLatitude() != null && dto.getLongitude() != null) {
             entity.setLocation(geometryFactory.createPoint(

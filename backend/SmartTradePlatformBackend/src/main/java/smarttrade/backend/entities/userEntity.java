@@ -1,13 +1,10 @@
 package smarttrade.backend.entities;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -15,20 +12,17 @@ import java.util.List;
 @Entity
 @Builder
 @Table(name="users")
-public class userEntity {
+public class UserEntity {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private Long user_id;
+    @Column(name = "user_id")
+    private Long userId;
     private String email;
     private String name;
     private  String phone_no;
-
-    private double trustScore = 0.0;      // Based on correct labeling and pricing
+    private double trustScore = 0.0;
     private int totalListings = 0;
     private int successfulTrades = 0;
-
     private Double latitude;
     private Double longitude;
-
-
 }

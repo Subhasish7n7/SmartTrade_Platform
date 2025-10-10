@@ -3,7 +3,6 @@ package smarttrade.backend.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import smarttrade.backend.entities.userEntity;
 
 import java.util.List;
 
@@ -11,7 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class itemDto {
-    private Long item_id;
+    private Long itemId;
     private String item_name;
     private int item_NewPrice;
     private int item_GeneratedPrice;
@@ -23,7 +22,7 @@ public class itemDto {
     private List<String> labels;            // Keywords, e.g., ["gaming", "intel", "DDR4"]
     private Double latitude;                // For location-based filtering
     private Double longitude;
-    private boolean isAvailable = true;     // Mark item as available/traded
-    private boolean isForTrade = false;     // Whether item is marked for trade
-    private boolean isForSale = true;       // Whether item is marked for sale
+    private boolean available = true;     // Mark item as available/traded
+    private boolean forTrade = false;     // Whether item is marked for trade
+    private boolean forSale = true;       // Whether item is marked for sale
 }

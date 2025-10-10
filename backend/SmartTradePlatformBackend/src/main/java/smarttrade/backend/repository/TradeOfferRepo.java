@@ -1,9 +1,10 @@
 package smarttrade.backend.repository;
 
-import smarttrade.backend.entities.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import smarttrade.backend.entities.TradeOfferEntity;
 
 @Repository
-public interface userRepo extends JpaRepository<UserEntity,Long> {
+public interface TradeOfferRepo extends JpaRepository<TradeOfferEntity, Long> {
 }
+

@@ -2,7 +2,7 @@ package smarttrade.backend.controller;
 
 import smarttrade.backend.Mappers.userMapperImpl;
 import smarttrade.backend.dto.userDto;
-import smarttrade.backend.entities.userEntity;
+import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.service.userService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,46 +12,52 @@ import java.util.List;
 @RestController
 public class userController {
 
-        private userService userService;
-        private userMapperImpl userMapper;
-        public userController(userService userService, userMapperImpl userMapper){
-            this.userService=userService;
-            this.userMapper=userMapper;
+    private final userService userService;
+    private final userMapperImpl userMapper;
 
-        }
-        @GetMapping("/users")
-        public ResponseEntity<List<userDto>> getAllUsers(){
-            List<userEntity> users= userService.getAllusers();
-            List<userDto> userDtos= users.stream().map(userMapper::mapFrom).toList();
-            return new ResponseEntity<>(userDtos, HttpStatus.OK);
-        }
-        @GetMapping("users/{user_id}")
-        public ResponseEntity<userDto> getUsers(@PathVariable("user_id") Long user_id){
-            userEntity user= userService.GetUser(user_id).orElseThrow(
-                    ()-> new IllegalArgumentException("object not found"));
+    public userController(userService userService, userMapperImpl userMapper){
+        this.userService = userService;
+        this.userMapper = userMapper;
+    }
 
-            return new ResponseEntity<>(userMapper.mapFrom(user), HttpStatus.OK);
-        }
-        @PostMapping("/users")
-        public ResponseEntity<userDto> addUser(userDto user){
-            userEntity userEntity= userMapper.mapTo(user);
-            userDto userDto=userMapper.mapFrom(userService.addUser(userEntity));
-            return new ResponseEntity<>(userDto, HttpStatus.CREATED);
-        }
-        @PatchMapping("/users/{user_id}")
-        public ResponseEntity<userDto> UpdateItem(@PathVariable("user_id") Long user_id,
-                                                    @RequestBody userDto user){
-            if(userService.GetUser(user_id).isEmpty()){
-                return new ResponseEntity<>(user,HttpStatus.NOT_FOUND);
-            }
-            userEntity userEntity=userMapper.mapTo(user);
-            userDto userDto=userMapper.mapFrom(userService.updateUser(user_id,userEntity));
-            return new ResponseEntity<>(userDto, HttpStatus.OK);
-        }
-        @DeleteMapping("/users/{user_id}")
-        public ResponseEntity deleteItem(@PathVariable("user_id") Long user_id){
-            userService.deleteUser(user_id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
+    @GetMapping("/users")
+    public ResponseEntity<List<userDto>> getAllUsers(){
+        List<UserEntity> users = userService.getAllUsers();
+        List<userDto> userDtos = users.stream().map(userMapper::mapFrom).toList();
+        return new ResponseEntity<>(userDtos, HttpStatus.OK);
+    }
 
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<userDto> getUser(@PathVariable("userId") Long userId) {
+        return userService.GetUser(userId).map(userEntity -> {
+            userDto userDto= userMapper.mapFrom(userEntity);
+            return new ResponseEntity<>(userDto,HttpStatus.OK);
+        }).orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+
+    @PostMapping("/users")
+    public ResponseEntity<userDto> addUser(@RequestBody userDto user){
+        UserEntity userEntity = userMapper.mapTo(user);
+        userDto userDto = userMapper.mapFrom(userService.addUser(userEntity));
+        return new ResponseEntity<>(userDto, HttpStatus.CREATED);
+    }
+
+    @PatchMapping("/users/{userId}")
+    public ResponseEntity<userDto> updateUser(@PathVariable("userId") Long userId,
+                                              @RequestBody userDto user){
+        if(userService.GetUser(userId).isEmpty()){
+            return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
+        }
+        UserEntity userEntity = userMapper.mapTo(user);
+        userDto userDto = userMapper.mapFrom(userService.updateUser(userId, userEntity));
+        return new ResponseEntity<>(userDto, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable("userId") Long userId){
+        userService.deleteUser(userId);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
 }
+

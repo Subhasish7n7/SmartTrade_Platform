@@ -20,14 +20,17 @@ import java.util.List;
 public class itemEntity {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
-    private Long item_id;
+    @Column(name= "item_id")
+    private Long itemId;
+
     private String item_name;
     private int item_NewPrice;
     private int item_GeneratedPrice;
     private int item_UserPrice;
+
     @ManyToOne
     @JoinColumn(name = "userID")
-    private userEntity user;
+    private UserEntity user;
 
     private String description;              // Item description
     private String category;                 // Category (e.g., electronics, books)
@@ -36,8 +39,14 @@ public class itemEntity {
     @JsonIgnore
     @Column(columnDefinition = "geography(Point,4326)")
     private Point location;
-    private boolean isAvailable = true;     // Mark item as available/traded
-    private boolean isForTrade = false;     // Whether item is marked for trade
-    private boolean isForSale = true;       // Whether item is marked for sale
+
+    @Column(name = "is_for_sale")
+    private boolean forSale = true;
+
+    @Column(name = "is_for_trade")
+    private boolean forTrade = false;
+
+    @Column(name = "is_available")
+    private boolean available = true;    // Mark item as available/traded
 
 }

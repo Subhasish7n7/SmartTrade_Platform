@@ -16,10 +16,13 @@ public class ModelMapperConfig {
         ModelMapper modelMapper = new ModelMapper();
 
         TypeMap<itemDto, itemEntity> typeMap = modelMapper.createTypeMap(itemDto.class, itemEntity.class);
-        typeMap.addMappings(mapper -> mapper.skip(itemEntity::setLocation));
+
+        typeMap.addMappings(mapper -> {
+            mapper.skip(itemEntity::setLocation);
+        });
+
         typeMap.setProvider(p -> new itemEntity());
 
         return modelMapper;
     }
 }
-

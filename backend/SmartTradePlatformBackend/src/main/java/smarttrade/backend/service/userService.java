@@ -1,6 +1,6 @@
 package smarttrade.backend.service;
 
-import smarttrade.backend.entities.userEntity;
+import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.userRepo;
 import org.springframework.stereotype.Service;
 
@@ -14,20 +14,20 @@ public class userService{
         this.userRepo = userRepo;
     }
 
-    public List<userEntity> getAllusers() {
+    public List<UserEntity> getAllUsers() {
         return userRepo.findAll();
     }
 
-    public Optional<userEntity> GetUser(Long user_Id) {
+    public Optional<UserEntity> GetUser(Long user_Id) {
         return userRepo.findById(user_Id);
     }
 
-    public userEntity addUser(userEntity user) {
+    public UserEntity addUser(UserEntity user) {
         return userRepo.save(user);
     }
 
-    public userEntity updateUser(Long userId, userEntity user) {
-        user.setUser_id(userId);
+    public UserEntity updateUser(Long userId, UserEntity user) {
+        user.setUserId(userId);
         return userRepo.save(user);
     }
 

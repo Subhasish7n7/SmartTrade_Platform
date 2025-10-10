@@ -1,9 +1,6 @@
 package smarttrade.backend.service;
 
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
+
 import smarttrade.backend.entities.itemEntity;
 import smarttrade.backend.repository.itemRepo;
 import org.springframework.stereotype.Service;
@@ -19,11 +16,12 @@ public class itemService {
         this.itemRepo=itemRepo;
     }
     public List<itemEntity> GetAllItems() {
+        
         return itemRepo.findAll();
     }
 
-    public Optional<itemEntity> GetItem(Long item_id) {
-        return itemRepo.findById(item_id);
+    public Optional<itemEntity> GetItem(Long itemId) {
+        return itemRepo.findById(itemId);
     }
 
     public itemEntity addItems(itemEntity item) {
@@ -32,7 +30,7 @@ public class itemService {
 
 
     public itemEntity updateItem(Long itemId, itemEntity item) {
-        item.setItem_id(itemId);
+        item.setItemId(itemId);
         return itemRepo.save(item);
     }
 
@@ -46,16 +44,16 @@ public class itemService {
     }
 
 
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Radius of the earth in km
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
+//    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+//        final int R = 6371; // Radius of the earth in km
+//        double latDistance = Math.toRadians(lat2 - lat1);
+//        double lonDistance = Math.toRadians(lon2 - lon1);
+//        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+//                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+//                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+//        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//        return R * c;
+//    }
 
     public List<itemEntity> searchItems(String category, List<String> labels, String name) {
         List<itemEntity> allItems = itemRepo.findAll();
