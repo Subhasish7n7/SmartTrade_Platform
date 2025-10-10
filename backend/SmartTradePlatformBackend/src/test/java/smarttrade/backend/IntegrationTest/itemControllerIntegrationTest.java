@@ -25,9 +25,8 @@ import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.Mappers.itemMapperImpl;
 import smarttrade.backend.TestDataUtil.itemTestData;
 import smarttrade.backend.TestDataUtil.userTestData;
-import smarttrade.backend.dto.itemDto;
 import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.entities.userEntity;
+import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.service.itemService;
 import smarttrade.backend.service.userService;
 
@@ -61,6 +60,7 @@ public class itemControllerIntegrationTest {
     public static void startContainer() {
         postgres.start();
     }
+
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
     private final itemService itemService;
@@ -77,8 +77,8 @@ public class itemControllerIntegrationTest {
     }
     @Test
     public void TestCreateItems() throws Exception {
-        userEntity userEntity= userTestData.CreateUser();
-        userEntity savedUser= userService.addUser(userEntity);
+        UserEntity userEntity= userTestData.CreateUserA();
+        UserEntity savedUser= userService.addUser(userEntity);
         itemEntity itemEntity= itemTestData.CreateItem1(savedUser);
         itemService.addItems(itemEntity);
         String item_jason= objectMapper.writeValueAsString(List.of(itemEntity));
@@ -93,8 +93,8 @@ public class itemControllerIntegrationTest {
     }
     @Test
     public void TestGetAllItems() throws Exception {
-        userEntity user = userTestData.CreateUser();
-        userEntity savedUser=userService.addUser(user);
+        UserEntity user = userTestData.CreateUserA();
+        UserEntity savedUser=userService.addUser(user);
         itemEntity item1 = itemTestData.CreateItem1(savedUser);
         itemEntity item2 = itemTestData.CreateItem2(savedUser);
         itemService.addItems(item1);
@@ -108,12 +108,12 @@ public class itemControllerIntegrationTest {
 
     @Test
     public void TestGetItemById() throws Exception {
-        userEntity user = userTestData.CreateUser();
+        UserEntity user = userTestData.CreateUserA();
         user= userService.addUser(user);
         itemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/items/{item_id}", item.getItem_id())
+        mockMvc.perform(MockMvcRequestBuilders.get("/items/{itemId}", item.getItemId())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.item_name").value("mouse"));
@@ -121,7 +121,7 @@ public class itemControllerIntegrationTest {
 
     @Test
     public void TestUpdateItem() throws Exception {
-        userEntity user = userTestData.CreateUser();
+        UserEntity user = userTestData.CreateUserA();
         user=userService.addUser(user);
         itemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
@@ -129,7 +129,7 @@ public class itemControllerIntegrationTest {
         item.setCategory("electronic");
         String updateJson = objectMapper.writeValueAsString(item);
 
-        mockMvc.perform(MockMvcRequestBuilders.patch("/items/{item_id}", item.getItem_id())
+        mockMvc.perform(MockMvcRequestBuilders.patch("/items/{itemId}", item.getItemId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateJson))
                 .andExpect(MockMvcResultMatchers.status().isOk())
@@ -138,22 +138,22 @@ public class itemControllerIntegrationTest {
 
     @Test
     public void TestDeleteItem() throws Exception {
-        userEntity user = userTestData.CreateUser();
+        UserEntity user = userTestData.CreateUserA();
         user=userService.addUser(user);
         itemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
 
-        mockMvc.perform(MockMvcRequestBuilders.delete("/items/{item_id}", item.getItem_id()))
+        mockMvc.perform(MockMvcRequestBuilders.delete("/items/{itemId}", item.getItemId()))
                 .andExpect(MockMvcResultMatchers.status().isNoContent());
 
         // Verify deleted by trying to fetch
-        mockMvc.perform(MockMvcRequestBuilders.get("/items/{item_id}", item.getItem_id()))
+        mockMvc.perform(MockMvcRequestBuilders.get("/items/{itemId}", item.getItemId()))
                 .andExpect(MockMvcResultMatchers.status().isNotFound());
     }
     @Test
     public void testSearchItems() throws Exception {
         // Arrange: Create and save user and item
-        userEntity user = userTestData.CreateUser();
+        UserEntity user = userTestData.CreateUserA();
         user = userService.addUser(user);
 
         itemEntity item = itemTestData.CreateItem1(user);
@@ -177,7 +177,7 @@ public class itemControllerIntegrationTest {
     @Test
     public void testGetNearbyItems() throws Exception {
         // Setup: Create user
-        userEntity savedUser = userService.addUser(userTestData.CreateUser());
+        UserEntity savedUser = userService.addUser(userTestData.CreateUserA());
 
         // Setup: Create nearby item in NYC
         itemEntity nearbyItem = itemTestData.CreateItem1(savedUser);
@@ -209,9 +209,6 @@ public class itemControllerIntegrationTest {
                 // Optional: check item name or other fields
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].item_name").value(nearbyItem.getItem_name()));
     }
-
-
-
 }
 
 

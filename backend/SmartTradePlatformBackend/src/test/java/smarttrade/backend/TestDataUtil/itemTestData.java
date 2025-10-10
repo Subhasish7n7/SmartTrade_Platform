@@ -1,7 +1,7 @@
 package smarttrade.backend.TestDataUtil;
 
 import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.entities.userEntity;
+import smarttrade.backend.entities.UserEntity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class itemTestData {
 
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public static itemEntity CreateItem1(userEntity userEntity){
+    public static itemEntity CreateItem1(UserEntity userEntity){
         List<String> labels= new ArrayList<>();
         labels.add("arhounmbd");
         labels.add("arhounmb");
@@ -36,13 +36,13 @@ public class itemTestData {
                 condition("old").
                 labels(labels).
                 location(location).
-                isAvailable(true).
-                isForTrade(false).
-                isForSale(true).
+                available(true).
+                forTrade(false).
+                forSale(true).
                 build();
     }
 
-    public static itemEntity CreateItem2(userEntity userEntity){
+    public static itemEntity CreateItem2(UserEntity userEntity){
         List<String> labels= new ArrayList<>();
         labels.add("kasdcjadjkn");
         labels.add("kasdcjadjk");
@@ -63,9 +63,10 @@ public class itemTestData {
                 condition("new").
                 labels(labels).
                 location(location).
-                isAvailable(true).
-                isForTrade(false).
-                isForSale(true).
+                available(true).
+                forTrade(false).
+                forSale(true).
                 build();
     }
+
 }
