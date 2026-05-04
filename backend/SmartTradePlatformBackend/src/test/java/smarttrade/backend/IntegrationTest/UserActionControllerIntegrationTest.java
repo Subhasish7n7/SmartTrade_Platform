@@ -1,6 +1,5 @@
 package smarttrade.backend.IntegrationTest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,17 +12,12 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
-import smarttrade.backend.Mappers.CartItemMapper;
-import smarttrade.backend.Mappers.WishListItemMapper;
 import smarttrade.backend.TestDataUtil.itemTestData;
 import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.service.CartService;
-import smarttrade.backend.service.WishlistService;
 import smarttrade.backend.service.itemService;
 import smarttrade.backend.service.userService;
 
@@ -145,7 +139,7 @@ public class UserActionControllerIntegrationTest {
 
         // Then delete
         mockMvc.perform(delete("/user/{userId}/wishlist/{itemId}", user.getUserId(), item.getItemId()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test

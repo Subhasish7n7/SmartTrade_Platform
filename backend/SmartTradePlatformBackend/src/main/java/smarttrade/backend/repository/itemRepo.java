@@ -24,4 +24,14 @@ public interface itemRepo extends JpaRepository<itemEntity,Long> {
             @Param("radiusMeters") double radiusMeters
     );
 
+    @Query(value = """
+    SELECT * FROM items
+    WHERE is_available = true
+    AND (:category IS NULL OR category = :category)
+    AND (:name IS NULL OR item_name ILIKE CONCAT('%', :name, '%'))
+    """, nativeQuery = true)
+    List<itemEntity> searchItems(
+            @Param("category") String category,
+            @Param("name") String name
+    );
 }

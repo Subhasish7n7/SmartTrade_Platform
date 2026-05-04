@@ -31,3 +31,24 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Env file ###
+.env
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env variants
+.env.*
+!.env.example
+
+# Maven
+dependency-reduced-pom.xml
+
+# Runtime
+*.pid
+*.seed

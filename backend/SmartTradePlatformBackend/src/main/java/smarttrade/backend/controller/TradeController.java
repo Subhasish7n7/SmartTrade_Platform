@@ -24,10 +24,9 @@ public class TradeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(tradeDto);
     }
 
-    @PatchMapping("/{tradeId}/status")
-    public ResponseEntity<Void> updateTradeStatus(@PathVariable Long tradeId,
-                                                  @RequestParam String status) {
-        tradeService.updateTradeStatus(tradeId, status);
+    @PatchMapping("/{tradeId}/accept")
+    public ResponseEntity<Void> acceptTrade(@PathVariable Long tradeId) {
+        tradeService.acceptTrade(tradeId);
         return ResponseEntity.ok().build();
     }
 }

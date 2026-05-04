@@ -9,7 +9,6 @@ import smarttrade.backend.entities.itemEntity;
 import smarttrade.backend.repository.itemRepo;
 import smarttrade.backend.repository.userRepo;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,8 +31,7 @@ public class TradeMapper {
         List<itemEntity> receiverItems = itemRepo.findAllById(dto.getReceiverItemIds());
 
         return TradeOfferEntity.builder()
-                .sender(sender)
-                .receiver(receiver)
+                .createdBy(sender)
                 .senderItems(senderItems)
                 .receiverItems(receiverItems)
                 .build();
@@ -54,7 +52,7 @@ public class TradeMapper {
                                 .map(itemEntity::getItemId)
                                 .collect(Collectors.toList()))
                 .createdAt(entity.getCreatedAt())
-                .status(entity.getStatus())
+                .status(entity.getTrade().getStatus().name())
                 .build();
     }
 }

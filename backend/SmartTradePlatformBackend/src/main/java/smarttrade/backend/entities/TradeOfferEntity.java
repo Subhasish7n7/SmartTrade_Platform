@@ -15,9 +15,10 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class TradeOfferEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long tradeId;
+    private Long id;
 
     @ManyToOne
     private UserEntity sender;
@@ -25,21 +26,27 @@ public class TradeOfferEntity {
     @ManyToOne
     private UserEntity receiver;
 
-    // Items offered
     @ManyToMany
     @JoinTable(name = "trade_sender_items",
-            joinColumns = @JoinColumn(name = "trade_id"),
+            joinColumns = @JoinColumn(name = "trade_offer_id"),
             inverseJoinColumns = @JoinColumn(name = "item_id"))
     private List<itemEntity> senderItems;
 
-    // Items requested
     @ManyToMany
     @JoinTable(name = "trade_receiver_items",
-            joinColumns = @JoinColumn(name = "trade_id"),
+            joinColumns = @JoinColumn(name = "trade_offer_id"),
             inverseJoinColumns = @JoinColumn(name = "item_id"))
     private List<itemEntity> receiverItems;
 
-    private String status; // PENDING, ACCEPTED, DECLINED
+    @ManyToOne
+    @JoinColumn(name = "trade_id")
+    private TradeEntity trade;
+
+    @ManyToOne
+    private UserEntity createdBy;
+
+    private Double cashAdjustment;
+
     private LocalDateTime createdAt;
 }
 

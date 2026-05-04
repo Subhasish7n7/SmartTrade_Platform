@@ -15,7 +15,7 @@ public class itemDto {
     private int item_NewPrice;
     private int item_GeneratedPrice;
     private int item_UserPrice;
-    private userDto user;
+    private Long userId;
     private String description;              // Item description
     private String category;                 // Category (e.g., electronics, books)
     private String condition;                // "new", "used - like new", "used - good", etc.

@@ -32,8 +32,6 @@ import smarttrade.backend.service.userService;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest
 @ExtendWith(SpringExtension.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
@@ -152,7 +150,6 @@ public class itemControllerIntegrationTest {
     }
     @Test
     public void testSearchItems() throws Exception {
-        // Arrange: Create and save user and item
         UserEntity user = userTestData.CreateUserA();
         user = userService.addUser(user);
 
@@ -161,11 +158,9 @@ public class itemControllerIntegrationTest {
         item.setLabels(List.of("tech", "gadget"));
         item.setItem_name("mouse");
         item = itemService.addItems(item);
-
-        // Act & Assert: Perform search request with parameters
         mockMvc.perform(MockMvcRequestBuilders.get("/items/search")
                         .param("category", "electronics")
-                        .param("labels", "tech", "gadget") // Multiple labels
+                        .param("labels", "tech", "gadget")
                         .param("name", "mouse")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
@@ -176,16 +171,13 @@ public class itemControllerIntegrationTest {
     }
     @Test
     public void testGetNearbyItems() throws Exception {
-        // Setup: Create user
         UserEntity savedUser = userService.addUser(userTestData.CreateUserA());
 
-        // Setup: Create nearby item in NYC
         itemEntity nearbyItem = itemTestData.CreateItem1(savedUser);
         nearbyItem.setLocation(new GeometryFactory(new PrecisionModel(), 4326)
-                .createPoint(new Coordinate(-74.0060, 40.7128))); // lng, lat order!
+                .createPoint(new Coordinate(-74.0060, 40.7128))); // lng, lat
         itemService.addItems(nearbyItem);
 
-        // Setup: Create far item in Los Angeles (~3940 km away)
         itemEntity farItem = itemTestData.CreateItem2(savedUser);
         farItem.setLocation(new GeometryFactory(new PrecisionModel(), 4326)
                 .createPoint(new Coordinate(-118.2437, 34.0522)));
@@ -203,10 +195,9 @@ public class itemControllerIntegrationTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 // Exactly one item returned (the nearby one)
                 .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(1))
-                // Check returned item latitude and longitude match nearbyItem
+                // Checking returned item latitude and longitude match nearbyItem
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].latitude").value(40.7128))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].longitude").value(-74.0060))
-                // Optional: check item name or other fields
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].item_name").value(nearbyItem.getItem_name()));
     }
 }

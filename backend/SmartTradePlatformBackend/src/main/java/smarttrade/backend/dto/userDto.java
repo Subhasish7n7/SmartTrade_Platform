@@ -3,13 +3,16 @@ package smarttrade.backend.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class userDto {
     private Long userId;
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email")
     private String email;
     private String name;
     private  String phone_no;

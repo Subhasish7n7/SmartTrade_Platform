@@ -12,6 +12,7 @@ import smarttrade.backend.repository.userRepo;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,19 @@ public class CartService {
     private final CartItemRepo cartRepo;
 
     public CartItemEntity addToCart(CartItemEntity cartItem) {
+
+        Optional<CartItemEntity> existing =
+                cartRepo.findByUser_UserIdAndItem_ItemId(
+                        cartItem.getUser().getUserId(),
+                        cartItem.getItem().getItemId()
+                );
+
+        if (existing.isPresent()) {
+            CartItemEntity entity = existing.get();
+            entity.setQuantity(entity.getQuantity() + cartItem.getQuantity());
+            return cartRepo.save(entity);
+        }
+
         cartItem.setDateAdded(LocalDateTime.now());
         return cartRepo.save(cartItem);
     }

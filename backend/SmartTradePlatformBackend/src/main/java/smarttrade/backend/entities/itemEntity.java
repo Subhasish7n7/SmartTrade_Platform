@@ -35,7 +35,10 @@ public class itemEntity {
     private String description;              // Item description
     private String category;                 // Category (e.g., electronics, books)
     private String condition;                // "new", "used - like new", "used - good", etc.
-    private List<String> labels;// Keywords, e.g., ["gaming", "intel", "DDR4"]
+    @ElementCollection
+    @CollectionTable(name = "item_labels", joinColumns = @JoinColumn(name = "item_id"))
+    @Column(name = "label")
+    private List<String> labels;             // Keywords, e.g., ["gaming", "intel", "DDR4"]
     @JsonIgnore
     @Column(columnDefinition = "geography(Point,4326)")
     private Point location;
@@ -48,5 +51,11 @@ public class itemEntity {
 
     @Column(name = "is_available")
     private boolean available = true;    // Mark item as available/traded
+
+    @Column(name = "is_locked")
+    private boolean locked = false;
+
+    @Column(name = "locked_by_trade")
+    private Long lockedByTradeId;
 
 }

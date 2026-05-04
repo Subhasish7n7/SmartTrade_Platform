@@ -18,6 +18,7 @@ public class TradeOfferDto {
     private Long receiverId;
     private List<Long> senderItemIds;
     private List<Long> receiverItemIds;
+    private Double cashAdjustment;
     private LocalDateTime createdAt;
     private String status;
 }

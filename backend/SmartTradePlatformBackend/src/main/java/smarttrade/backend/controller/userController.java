@@ -1,5 +1,6 @@
 package smarttrade.backend.controller;
 
+import jakarta.validation.Valid;
 import smarttrade.backend.Mappers.userMapperImpl;
 import smarttrade.backend.dto.userDto;
 import smarttrade.backend.entities.UserEntity;
@@ -37,7 +38,7 @@ public class userController {
 
 
     @PostMapping("/users")
-    public ResponseEntity<userDto> addUser(@RequestBody userDto user){
+    public ResponseEntity<userDto> addUser(@Valid @RequestBody userDto user){
         UserEntity userEntity = userMapper.mapTo(user);
         userDto userDto = userMapper.mapFrom(userService.addUser(userEntity));
         return new ResponseEntity<>(userDto, HttpStatus.CREATED);
@@ -45,7 +46,7 @@ public class userController {
 
     @PatchMapping("/users/{userId}")
     public ResponseEntity<userDto> updateUser(@PathVariable("userId") Long userId,
-                                              @RequestBody userDto user){
+                                              @Valid @RequestBody userDto user){
         if(userService.GetUser(userId).isEmpty()){
             return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
         }
