@@ -15,6 +15,7 @@ public class userDto {
     @Email(message = "Invalid email")
     private String email;
     private String name;
+    private String password;
     private  String phone_no;
     private double trustScore = 0.0;      // Based on correct labeling and pricing
     private int totalListings = 0;

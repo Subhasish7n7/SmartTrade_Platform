@@ -17,9 +17,11 @@ public class UserEntity {
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     @Column(name = "user_id")
     private Long userId;
-    @Column(unique = true)
+    @Column(nullable = false, unique = true)
     private String email;
+    @Column(nullable = false)
     private String password;
+    @Column(nullable = false)
     private String name;
     private  String phone_no;
     private double trustScore = 0.0;

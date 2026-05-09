@@ -61,7 +61,7 @@ public class TradeService {
         trade.setStatus(TradeStatus.ACCEPTED);
 
         List<TradeOfferEntity> offers = tradeOfferRepo.findByTrade_TradeId(tradeId);
-        TradeOfferEntity latestOffer = offers.get(offers.size() - 1);
+        TradeOfferEntity latestOffer = offers.getLast();
 
         // mark items unavailable
         latestOffer.getSenderItems().forEach(i -> {

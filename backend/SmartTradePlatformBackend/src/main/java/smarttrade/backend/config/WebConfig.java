@@ -18,7 +18,7 @@ public class WebConfig {
             @Override
             public void addCorsMappings( CorsRegistry registry) {
                 registry.addMapping("/**") // all paths
-                        .allowedOrigins(frontendUrl) // allow Vite dev server
+                        .allowedOrigins(frontendUrl, "http://localhost:3000") // allow Vite dev server
                         .allowedMethods("GET", "POST", "PUT", "DELETE","PATCH", "OPTIONS")
                         .allowedHeaders("*"); // allow all headers
             }

@@ -9,6 +9,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+console.log(import.meta.env.VITE_API_BASE_URL);
 
 // Request interceptor for JWT token
 api.interceptors.request.use(
