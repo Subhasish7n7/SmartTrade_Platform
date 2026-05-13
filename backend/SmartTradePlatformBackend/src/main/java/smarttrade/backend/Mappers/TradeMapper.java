@@ -1,59 +1,40 @@
 package smarttrade.backend.Mappers;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import smarttrade.backend.dto.TradeOfferDto;
+import smarttrade.backend.dto.TradeOfferResponse;
 import smarttrade.backend.entities.TradeOfferEntity;
-import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.repository.itemRepo;
-import smarttrade.backend.repository.userRepo;
+import smarttrade.backend.entities.ItemEntity;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class TradeMapper {
 
-    private final userRepo userRepo;
-    private final itemRepo itemRepo;
+    public TradeOfferResponse mapFromEntity(TradeOfferEntity entity) {
 
-    public TradeOfferEntity mapToEntity(TradeOfferDto dto) {
-        if (dto == null) return null;
+        if (entity == null) {
+            return null;
+        }
 
-        UserEntity sender = userRepo.findById(dto.getSenderId())
-                .orElseThrow(() -> new IllegalArgumentException("Sender not found"));
-        UserEntity receiver = userRepo.findById(dto.getReceiverId())
-                .orElseThrow(() -> new IllegalArgumentException("Receiver not found"));
-
-        List<itemEntity> senderItems = itemRepo.findAllById(dto.getSenderItemIds());
-        List<itemEntity> receiverItems = itemRepo.findAllById(dto.getReceiverItemIds());
-
-        return TradeOfferEntity.builder()
-                .createdBy(sender)
-                .senderItems(senderItems)
-                .receiverItems(receiverItems)
-                .build();
-    }
-
-    public TradeOfferDto mapFromEntity(TradeOfferEntity entity) {
-        if (entity == null) return null;
-
-        return TradeOfferDto.builder()
+        return TradeOfferResponse.builder()
+                .tradeId(entity.getTrade().getTradeId())
                 .senderId(entity.getSender().getUserId())
                 .receiverId(entity.getReceiver().getUserId())
                 .senderItemIds(
-                        entity.getSenderItems().stream()
-                                .map(itemEntity::getItemId)
-                                .collect(Collectors.toList()))
+                        entity.getSenderItems()
+                                .stream()
+                                .map(ItemEntity::getItemId)
+                                .collect(Collectors.toList())
+                )
                 .receiverItemIds(
-                        entity.getReceiverItems().stream()
-                                .map(itemEntity::getItemId)
-                                .collect(Collectors.toList()))
-                .createdAt(entity.getCreatedAt())
+                        entity.getReceiverItems()
+                                .stream()
+                                .map(ItemEntity::getItemId)
+                                .collect(Collectors.toList())
+                )
+                .cashAdjustment(entity.getCashAdjustment())
                 .status(entity.getTrade().getStatus().name())
+                .createdAt(entity.getCreatedAt())
                 .build();
     }
 }
-

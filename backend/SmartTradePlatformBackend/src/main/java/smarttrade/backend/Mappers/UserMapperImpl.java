@@ -1,14 +1,14 @@
 package smarttrade.backend.Mappers;
 
 import org.springframework.stereotype.Component;
-import smarttrade.backend.dto.userDto;
+import smarttrade.backend.dto.UserDto;
 import smarttrade.backend.entities.UserEntity;
 
 @Component
-public class userMapperImpl implements Mapper<UserEntity, userDto> {
+public class UserMapperImpl {
 
-    @Override
-    public UserEntity mapTo(userDto dto) {
+
+    public UserEntity mapTo(UserDto dto) {
         if (dto == null) return null;
 
         UserEntity user = new UserEntity();
@@ -23,11 +23,10 @@ public class userMapperImpl implements Mapper<UserEntity, userDto> {
         return user;
     }
 
-    @Override
-    public userDto mapFrom(UserEntity entity) {
+    public UserDto mapFrom(UserEntity entity) {
         if (entity == null) return null;
 
-        userDto dto = new userDto();
+        UserDto dto = new UserDto();
 
         dto.setUserId(entity.getUserId());
         dto.setEmail(entity.getEmail());

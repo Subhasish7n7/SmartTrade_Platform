@@ -23,7 +23,7 @@ public class CartItemEntity {
     private UserEntity user;
 
     @ManyToOne
-    private itemEntity item;
+    private ItemEntity item;
 
     private int quantity;
     private LocalDateTime dateAdded;

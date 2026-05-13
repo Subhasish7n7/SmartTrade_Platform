@@ -22,7 +22,7 @@ public class WishlistItemEntity {
     private UserEntity user;
 
     @ManyToOne
-    private itemEntity item;
+    private ItemEntity item;
 
     private LocalDateTime dateAdded;
 }

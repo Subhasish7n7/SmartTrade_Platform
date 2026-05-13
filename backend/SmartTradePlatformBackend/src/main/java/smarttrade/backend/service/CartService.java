@@ -4,11 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.entities.CartItemEntity;
-import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.CartItemRepo;
-import smarttrade.backend.repository.itemRepo;
-import smarttrade.backend.repository.userRepo;
 
 import java.time.LocalDateTime;
 import java.util.List;

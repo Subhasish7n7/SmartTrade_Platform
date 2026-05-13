@@ -23,10 +23,10 @@ import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.dto.TradeOfferDto;
 import smarttrade.backend.entities.TradeOfferEntity;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.entities.itemEntity;
+import smarttrade.backend.entities.ItemEntity;
 import smarttrade.backend.service.TradeService;
-import smarttrade.backend.service.itemService;
-import smarttrade.backend.service.userService;
+import smarttrade.backend.service.ItemService;
+import smarttrade.backend.service.UserService;
 
 import java.util.List;
 
@@ -62,9 +62,9 @@ public class TradeControllerIntegrationTest {
     @Autowired
     private TradeMapper tradeMapper;
     @Autowired
-    private itemService itemService;
+    private ItemService itemService;
     @Autowired
-    private userService userService;
+    private UserService userService;
     @Autowired
     private TradeService tradeService;
     @Autowired
@@ -77,9 +77,9 @@ public class TradeControllerIntegrationTest {
         UserEntity receiver= userTestData.CreateUserB();
         userService.addUser(sender);
         userService.addUser(receiver);
-        itemEntity item1= itemService.addItems(itemTestData.CreateItem1(sender));
-        itemEntity item2= itemService.addItems(itemTestData.CreateItem2(sender));
-        itemEntity item3= itemService.addItems(itemTestData.CreateItem1(receiver));
+        ItemEntity item1= itemService.addItems(itemTestData.CreateItem1(sender));
+        ItemEntity item2= itemService.addItems(itemTestData.CreateItem2(sender));
+        ItemEntity item3= itemService.addItems(itemTestData.CreateItem1(receiver));
         List<Long> senderItems=List.of(item1.getItemId(),item2.getItemId());
         List<Long> receiverItems= List.of(item3.getItemId());
 
@@ -102,9 +102,9 @@ public class TradeControllerIntegrationTest {
         UserEntity receiver= userTestData.CreateUserB();
         userService.addUser(sender);
         userService.addUser(receiver);
-        itemEntity item1= itemService.addItems(itemTestData.CreateItem1(sender));
-        itemEntity item2= itemService.addItems(itemTestData.CreateItem2(sender));
-        itemEntity item3= itemService.addItems(itemTestData.CreateItem1(receiver));
+        ItemEntity item1= itemService.addItems(itemTestData.CreateItem1(sender));
+        ItemEntity item2= itemService.addItems(itemTestData.CreateItem2(sender));
+        ItemEntity item3= itemService.addItems(itemTestData.CreateItem1(receiver));
         List<Long> senderItems=List.of(item1.getItemId(),item2.getItemId());
         List<Long> receiverItems= List.of(item3.getItemId());
 

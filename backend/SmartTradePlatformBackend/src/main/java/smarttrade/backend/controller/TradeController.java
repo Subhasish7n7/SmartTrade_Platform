@@ -5,7 +5,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import smarttrade.backend.Mappers.TradeMapper;
+import smarttrade.backend.dto.CreateTradeOfferRequest;
 import smarttrade.backend.dto.TradeOfferDto;
+import smarttrade.backend.dto.TradeOfferResponse;
 import smarttrade.backend.entities.TradeOfferEntity;
 import smarttrade.backend.service.TradeService;
 
@@ -18,10 +20,11 @@ public class TradeController {
     private final TradeMapper tradeMapper;
 
     @PostMapping("/offer")
-    public ResponseEntity<TradeOfferDto> createTrade(@RequestBody TradeOfferDto dto) {
-        TradeOfferEntity tradeOffer= tradeMapper.mapToEntity(dto);
-        TradeOfferDto tradeDto=tradeMapper.mapFromEntity(tradeService.createTradeOffer(tradeOffer));
-        return ResponseEntity.status(HttpStatus.CREATED).body(tradeDto);
+    public ResponseEntity<TradeOfferResponse> createTrade(@RequestBody CreateTradeOfferRequest request) {
+        TradeOfferEntity tradeOffer = tradeService.createTradeOffer(request);
+        TradeOfferResponse response = tradeMapper.mapFromEntity(tradeOffer);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{tradeId}/accept")

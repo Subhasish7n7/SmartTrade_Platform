@@ -16,11 +16,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
-import smarttrade.backend.Mappers.userMapperImpl;
+import smarttrade.backend.Mappers.UserMapperImpl;
 import smarttrade.backend.TestDataUtil.userTestData;
-import smarttrade.backend.dto.userDto;
+import smarttrade.backend.dto.UserDto;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.service.userService;
+import smarttrade.backend.service.UserService;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,17 +56,17 @@ public class userControllerIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private userService userService;
+    private UserService userService;
 
     @Autowired
-    private userMapperImpl userMapper;
+    private UserMapperImpl userMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     public void testCreateUser() throws Exception {
         UserEntity newUser = userTestData.CreateUserA();
-        userDto dto = userMapper.mapFrom(newUser);
+        UserDto dto = userMapper.mapFrom(newUser);
         String json = objectMapper.writeValueAsString(dto);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/users")
@@ -106,7 +106,7 @@ public class userControllerIntegrationTest {
         user.setName("Updated Name");
         user.setPhone_no("9999999999");
 
-        userDto updatedDto = userMapper.mapFrom(user);
+        UserDto updatedDto = userMapper.mapFrom(user);
         String updatedJson = objectMapper.writeValueAsString(updatedDto);
 
         mockMvc.perform(MockMvcRequestBuilders.patch("/users/{userId}", user.getUserId())

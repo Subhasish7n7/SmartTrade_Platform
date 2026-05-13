@@ -1,6 +1,6 @@
 package smarttrade.backend.TestDataUtil;
 
-import smarttrade.backend.entities.itemEntity;
+import smarttrade.backend.entities.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ public class itemTestData {
 
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public static itemEntity CreateItem1(UserEntity userEntity){
+    public static ItemEntity CreateItem1(UserEntity userEntity){
         List<String> labels= new ArrayList<>();
         labels.add("arhounmbd");
         labels.add("arhounmb");
@@ -25,7 +25,7 @@ public class itemTestData {
 
         Point location = geometryFactory.createPoint(new Coordinate(-74.0060, 40.7128)); // lng, lat order!
 
-        return itemEntity.builder().
+        return ItemEntity.builder().
                 item_name("mouse").
                 item_NewPrice(123).
                 item_GeneratedPrice(1234).
@@ -42,7 +42,7 @@ public class itemTestData {
                 build();
     }
 
-    public static itemEntity CreateItem2(UserEntity userEntity){
+    public static ItemEntity CreateItem2(UserEntity userEntity){
         List<String> labels= new ArrayList<>();
         labels.add("kasdcjadjkn");
         labels.add("kasdcjadjk");
@@ -52,7 +52,7 @@ public class itemTestData {
 
         Point location = geometryFactory.createPoint(new Coordinate(-118.2437, 34.0522)); // lng, lat
 
-        return itemEntity.builder().
+        return ItemEntity.builder().
                 item_name("keyboard").
                 item_NewPrice(456).
                 item_GeneratedPrice(4567).

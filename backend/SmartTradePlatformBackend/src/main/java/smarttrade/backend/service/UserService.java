@@ -1,16 +1,16 @@
 package smarttrade.backend.service;
 
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.repository.userRepo;
+import smarttrade.backend.repository.UserRepo;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 @Service
-public class userService{
-    userRepo userRepo;
+public class UserService {
+    UserRepo userRepo;
 
-    public userService(userRepo userRepo) {
+    public UserService(UserRepo userRepo) {
         this.userRepo = userRepo;
     }
 

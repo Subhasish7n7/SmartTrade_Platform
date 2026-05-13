@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.CartItemDto;
 import smarttrade.backend.entities.CartItemEntity;
-import smarttrade.backend.repository.itemRepo;
-import smarttrade.backend.repository.userRepo;
+import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.repository.UserRepo;
 
 import java.util.List;
 
@@ -13,8 +13,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CartItemMapper {
 
-    private final userRepo userRepo;
-    private final itemRepo itemRepo;
+    private final UserRepo userRepo;
+    private final ItemRepo itemRepo;
 
     public CartItemEntity toEntity(CartItemDto dto) {
         return CartItemEntity.builder()

@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class userDto {
+public class UserDto {
     private Long userId;
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email")

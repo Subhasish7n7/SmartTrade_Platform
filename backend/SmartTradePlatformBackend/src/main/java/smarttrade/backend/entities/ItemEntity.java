@@ -17,7 +17,7 @@ import java.util.List;
 @Entity
 @Builder
 @Table(name="items")
-public class itemEntity {
+public class ItemEntity {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     @Column(name= "item_id")
@@ -57,5 +57,8 @@ public class itemEntity {
 
     @Column(name = "locked_by_trade")
     private Long lockedByTradeId;
+
+    @Version
+    private Long version;
 
 }

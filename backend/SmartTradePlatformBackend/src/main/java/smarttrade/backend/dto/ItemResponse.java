@@ -9,13 +9,13 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class itemDto {
+public class ItemResponse {
     private Long itemId;
     private String item_name;
     private int item_NewPrice;
     private int item_GeneratedPrice;
     private int item_UserPrice;
-    private Long userId;
+    private Long ownerId;
     private String description;              // Item description
     private String category;                 // Category (e.g., electronics, books)
     private String condition;                // "new", "used - like new", "used - good", etc.

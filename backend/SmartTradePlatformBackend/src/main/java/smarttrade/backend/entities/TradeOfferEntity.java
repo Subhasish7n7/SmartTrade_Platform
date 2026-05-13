@@ -30,13 +30,13 @@ public class TradeOfferEntity {
     @JoinTable(name = "trade_sender_items",
             joinColumns = @JoinColumn(name = "trade_offer_id"),
             inverseJoinColumns = @JoinColumn(name = "item_id"))
-    private List<itemEntity> senderItems;
+    private List<ItemEntity> senderItems;
 
     @ManyToMany
     @JoinTable(name = "trade_receiver_items",
             joinColumns = @JoinColumn(name = "trade_offer_id"),
             inverseJoinColumns = @JoinColumn(name = "item_id"))
-    private List<itemEntity> receiverItems;
+    private List<ItemEntity> receiverItems;
 
     @ManyToOne
     @JoinColumn(name = "trade_id")

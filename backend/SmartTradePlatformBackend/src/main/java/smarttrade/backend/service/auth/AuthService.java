@@ -9,14 +9,14 @@ import smarttrade.backend.dto.auth.AuthResponse;
 import smarttrade.backend.dto.auth.LoginRequest;
 import smarttrade.backend.dto.auth.RegisterRequest;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.repository.userRepo;
+import smarttrade.backend.repository.UserRepo;
 import smarttrade.backend.security.JwtService;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final userRepo userRepo;
+    private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;

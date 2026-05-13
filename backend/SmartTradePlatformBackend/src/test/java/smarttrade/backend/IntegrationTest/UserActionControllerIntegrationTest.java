@@ -17,9 +17,9 @@ import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.TestDataUtil.itemTestData;
 import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.entities.itemEntity;
-import smarttrade.backend.service.itemService;
-import smarttrade.backend.service.userService;
+import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.service.ItemService;
+import smarttrade.backend.service.UserService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -53,13 +53,13 @@ public class UserActionControllerIntegrationTest {
     }
 
     private final MockMvc mockMvc;
-    private final userService userService;
-    private final itemService itemService;
+    private final UserService userService;
+    private final ItemService itemService;
 
     @Autowired
     public UserActionControllerIntegrationTest(MockMvc mockMvc,
-                                               userService userService,
-                                               itemService itemService) {
+                                               UserService userService,
+                                               ItemService itemService) {
         this.mockMvc = mockMvc;
         this.userService = userService;
         this.itemService = itemService;
@@ -69,7 +69,7 @@ public class UserActionControllerIntegrationTest {
     public void testCreateCartItemIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
         UserEntity user2 = userService.addUser(userTestData.CreateUserB());
-        itemEntity item = itemService.addItems(itemTestData.CreateItem1(user2));
+        ItemEntity item = itemService.addItems(itemTestData.CreateItem1(user2));
 
         mockMvc.perform(
                         post("/user/{userId}/cart/{itemId}",
@@ -85,7 +85,7 @@ public class UserActionControllerIntegrationTest {
     @Test
     public void testRemoveCartItemIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
-        itemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
+        ItemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
 
         // Adding first
         mockMvc.perform(post("/user/{userId}/cart/{itemId}", user.getUserId(), item.getItemId())
@@ -101,8 +101,8 @@ public class UserActionControllerIntegrationTest {
     @Test
     public void testGetCartItemsIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
-        itemEntity item1 = itemService.addItems(itemTestData.CreateItem1(user));
-        itemEntity item2 = itemService.addItems(itemTestData.CreateItem2(user));
+        ItemEntity item1 = itemService.addItems(itemTestData.CreateItem1(user));
+        ItemEntity item2 = itemService.addItems(itemTestData.CreateItem2(user));
 
         mockMvc.perform(post("/user/{userId}/cart/{itemId}", user.getUserId(), item1.getItemId())
                         .param("quantity", "1"))
@@ -120,7 +120,7 @@ public class UserActionControllerIntegrationTest {
     @Test
     public void testAddWishlistItemIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
-        itemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
+        ItemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
 
         mockMvc.perform(post("/user/{userId}/wishlist/{itemId}", user.getUserId(), item.getItemId()))
                 .andExpect(status().isCreated())
@@ -131,7 +131,7 @@ public class UserActionControllerIntegrationTest {
     @Test
     public void testRemoveWishlistItemIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
-        itemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
+        ItemEntity item = itemService.addItems(itemTestData.CreateItem1(user));
 
         // Adding first
         mockMvc.perform(post("/user/{userId}/wishlist/{itemId}", user.getUserId(), item.getItemId()))
@@ -145,8 +145,8 @@ public class UserActionControllerIntegrationTest {
     @Test
     public void testGetWishlistItemsIntegrationTest() throws Exception {
         UserEntity user = userService.addUser(userTestData.CreateUserA());
-        itemEntity item1 = itemService.addItems(itemTestData.CreateItem1(user));
-        itemEntity item2 = itemService.addItems(itemTestData.CreateItem2(user));
+        ItemEntity item1 = itemService.addItems(itemTestData.CreateItem1(user));
+        ItemEntity item2 = itemService.addItems(itemTestData.CreateItem2(user));
 
         mockMvc.perform(post("/user/{userId}/wishlist/{itemId}", user.getUserId(), item1.getItemId()))
                 .andExpect(status().isCreated());

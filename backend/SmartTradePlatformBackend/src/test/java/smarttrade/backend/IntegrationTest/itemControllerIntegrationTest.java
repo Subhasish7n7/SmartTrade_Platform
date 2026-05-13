@@ -22,13 +22,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.testcontainers.utility.DockerImageName;
-import smarttrade.backend.Mappers.itemMapperImpl;
+import smarttrade.backend.Mappers.ItemMapperImpl;
 import smarttrade.backend.TestDataUtil.itemTestData;
 import smarttrade.backend.TestDataUtil.userTestData;
-import smarttrade.backend.entities.itemEntity;
+import smarttrade.backend.entities.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.service.itemService;
-import smarttrade.backend.service.userService;
+import smarttrade.backend.service.ItemService;
+import smarttrade.backend.service.UserService;
 
 import java.util.List;
 
@@ -61,12 +61,12 @@ public class itemControllerIntegrationTest {
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
-    private final itemService itemService;
-    private final userService userService;
-    private final itemMapperImpl itemMapper;
+    private final ItemService itemService;
+    private final UserService userService;
+    private final ItemMapperImpl itemMapper;
     @Autowired
-    public itemControllerIntegrationTest(MockMvc mockMvc, itemService itemService,
-                                         userService userService,itemMapperImpl itemMapper) {
+    public itemControllerIntegrationTest(MockMvc mockMvc, ItemService itemService,
+                                         UserService userService, ItemMapperImpl itemMapper) {
         this.mockMvc = mockMvc;
         this.objectMapper = new ObjectMapper();
         this.itemService=itemService;
@@ -77,7 +77,7 @@ public class itemControllerIntegrationTest {
     public void TestCreateItems() throws Exception {
         UserEntity userEntity= userTestData.CreateUserA();
         UserEntity savedUser= userService.addUser(userEntity);
-        itemEntity itemEntity= itemTestData.CreateItem1(savedUser);
+        ItemEntity itemEntity= itemTestData.CreateItem1(savedUser);
         itemService.addItems(itemEntity);
         String item_jason= objectMapper.writeValueAsString(List.of(itemEntity));
         mockMvc.perform(
@@ -93,8 +93,8 @@ public class itemControllerIntegrationTest {
     public void TestGetAllItems() throws Exception {
         UserEntity user = userTestData.CreateUserA();
         UserEntity savedUser=userService.addUser(user);
-        itemEntity item1 = itemTestData.CreateItem1(savedUser);
-        itemEntity item2 = itemTestData.CreateItem2(savedUser);
+        ItemEntity item1 = itemTestData.CreateItem1(savedUser);
+        ItemEntity item2 = itemTestData.CreateItem2(savedUser);
         itemService.addItems(item1);
         itemService.addItems(item2);
 
@@ -108,7 +108,7 @@ public class itemControllerIntegrationTest {
     public void TestGetItemById() throws Exception {
         UserEntity user = userTestData.CreateUserA();
         user= userService.addUser(user);
-        itemEntity item = itemTestData.CreateItem1(user);
+        ItemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/items/{itemId}", item.getItemId())
@@ -121,7 +121,7 @@ public class itemControllerIntegrationTest {
     public void TestUpdateItem() throws Exception {
         UserEntity user = userTestData.CreateUserA();
         user=userService.addUser(user);
-        itemEntity item = itemTestData.CreateItem1(user);
+        ItemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
         item.setItem_name("keyboard");
         item.setCategory("electronic");
@@ -138,7 +138,7 @@ public class itemControllerIntegrationTest {
     public void TestDeleteItem() throws Exception {
         UserEntity user = userTestData.CreateUserA();
         user=userService.addUser(user);
-        itemEntity item = itemTestData.CreateItem1(user);
+        ItemEntity item = itemTestData.CreateItem1(user);
         item = itemService.addItems(item);
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/items/{itemId}", item.getItemId()))
@@ -153,7 +153,7 @@ public class itemControllerIntegrationTest {
         UserEntity user = userTestData.CreateUserA();
         user = userService.addUser(user);
 
-        itemEntity item = itemTestData.CreateItem1(user);
+        ItemEntity item = itemTestData.CreateItem1(user);
         item.setCategory("electronics");
         item.setLabels(List.of("tech", "gadget"));
         item.setItem_name("mouse");
@@ -173,12 +173,12 @@ public class itemControllerIntegrationTest {
     public void testGetNearbyItems() throws Exception {
         UserEntity savedUser = userService.addUser(userTestData.CreateUserA());
 
-        itemEntity nearbyItem = itemTestData.CreateItem1(savedUser);
+        ItemEntity nearbyItem = itemTestData.CreateItem1(savedUser);
         nearbyItem.setLocation(new GeometryFactory(new PrecisionModel(), 4326)
                 .createPoint(new Coordinate(-74.0060, 40.7128))); // lng, lat
         itemService.addItems(nearbyItem);
 
-        itemEntity farItem = itemTestData.CreateItem2(savedUser);
+        ItemEntity farItem = itemTestData.CreateItem2(savedUser);
         farItem.setLocation(new GeometryFactory(new PrecisionModel(), 4326)
                 .createPoint(new Coordinate(-118.2437, 34.0522)));
         itemService.addItems(farItem);

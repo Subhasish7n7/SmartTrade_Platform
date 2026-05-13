@@ -113,7 +113,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/items",
-                                "/items/**"
+                                "/items/*",
+                                "/items/search",
+                                "/items/nearby"
                         ).permitAll()
                         /*
                             All other endpoints require JWT authentication.

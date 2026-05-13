@@ -1,57 +1,57 @@
 package smarttrade.backend.controller;
 
 import jakarta.validation.Valid;
-import smarttrade.backend.Mappers.userMapperImpl;
-import smarttrade.backend.dto.userDto;
+import smarttrade.backend.Mappers.UserMapperImpl;
+import smarttrade.backend.dto.UserDto;
 import smarttrade.backend.entities.UserEntity;
-import smarttrade.backend.service.userService;
+import smarttrade.backend.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-public class userController {
+public class UserController {
 
-    private final userService userService;
-    private final userMapperImpl userMapper;
+    private final UserService userService;
+    private final UserMapperImpl userMapper;
 
-    public userController(userService userService, userMapperImpl userMapper){
+    public UserController(UserService userService, UserMapperImpl userMapper){
         this.userService = userService;
         this.userMapper = userMapper;
     }
 
     @GetMapping("/users")
-    public ResponseEntity<List<userDto>> getAllUsers(){
+    public ResponseEntity<List<UserDto>> getAllUsers(){
         List<UserEntity> users = userService.getAllUsers();
-        List<userDto> userDtos = users.stream().map(userMapper::mapFrom).toList();
-        return new ResponseEntity<>(userDtos, HttpStatus.OK);
+        List<UserDto> UserDtos = users.stream().map(userMapper::mapFrom).toList();
+        return new ResponseEntity<>(UserDtos, HttpStatus.OK);
     }
 
     @GetMapping("/users/{userId}")
-    public ResponseEntity<userDto> getUser(@PathVariable("userId") Long userId) {
+    public ResponseEntity<UserDto> getUser(@PathVariable("userId") Long userId) {
         return userService.GetUser(userId).map(userEntity -> {
-            userDto userDto= userMapper.mapFrom(userEntity);
+            UserDto userDto= userMapper.mapFrom(userEntity);
             return new ResponseEntity<>(userDto,HttpStatus.OK);
         }).orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
 
     @PostMapping("/users")
-    public ResponseEntity<userDto> addUser(@Valid @RequestBody userDto user){
+    public ResponseEntity<UserDto> addUser(@Valid @RequestBody UserDto user){
         UserEntity userEntity = userMapper.mapTo(user);
-        userDto userDto = userMapper.mapFrom(userService.addUser(userEntity));
+        UserDto userDto = userMapper.mapFrom(userService.addUser(userEntity));
         return new ResponseEntity<>(userDto, HttpStatus.CREATED);
     }
 
     @PatchMapping("/users/{userId}")
-    public ResponseEntity<userDto> updateUser(@PathVariable("userId") Long userId,
-                                              @Valid @RequestBody userDto user){
+    public ResponseEntity<UserDto> updateUser(@PathVariable("userId") Long userId,
+                                              @Valid @RequestBody UserDto user){
         if(userService.GetUser(userId).isEmpty()){
             return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
         }
         UserEntity userEntity = userMapper.mapTo(user);
-        userDto userDto = userMapper.mapFrom(userService.updateUser(userId, userEntity));
+        UserDto userDto = userMapper.mapFrom(userService.updateUser(userId, userEntity));
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
 
