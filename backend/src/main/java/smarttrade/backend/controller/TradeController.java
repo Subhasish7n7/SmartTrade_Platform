@@ -63,11 +63,24 @@ public class TradeController {
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/{tradeId}/complete")
-    public ResponseEntity<Void> completeTrade(@PathVariable Long tradeId) {
-        tradeService.completeTrade(tradeId);
+    @PatchMapping("/{tradeId}/request-completion")
+    public ResponseEntity<Void> requestCompletion(
+            @PathVariable Long tradeId) {
+
+        tradeService.requestCompletion(tradeId);
+
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/{tradeId}/confirm-completion")
+    public ResponseEntity<Void> confirmCompletion(
+            @PathVariable Long tradeId) {
+
+        tradeService.confirmCompletion(tradeId);
+
+        return ResponseEntity.ok().build();
+    }
+
     @PatchMapping("/{tradeId}/cancel")
     public ResponseEntity<Void> cancelTrade(@PathVariable Long tradeId) {
         tradeService.cancelTrade(tradeId);

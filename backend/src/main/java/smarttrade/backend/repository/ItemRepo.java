@@ -45,7 +45,6 @@ public interface ItemRepo extends JpaRepository<ItemEntity,Long> {
     WHERE i.user.userId = :userId
       AND i.forTrade = true
       AND i.available = true
-      AND i.locked = false
       AND i.traded = false
       AND i.sold = false
 """)

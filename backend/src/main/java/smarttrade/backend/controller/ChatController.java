@@ -19,24 +19,24 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat.send")
     public void sendMessage(ChatMessageRequest request) {
 
-        ChatMessageResponse saved = chatService.saveMessage(
-                        request.getOtherUserId(),
-                        request.getMessage()
-                );
-
-        UserEntity receiver = chatService.getUser(request.getOtherUserId());
-
-        messagingTemplate.convertAndSendToUser(
-                receiver.getEmail(),
-                "/queue/messages",
-                saved
+        chatService.sendMessage(request.getOtherUserId(), request.getMessage()
         );
+    }
+    @PostMapping("/chat/{conversationId}/active")
+    public void enterConversation(
+            @PathVariable Long conversationId) {
 
+        chatService.enterConversation(conversationId);
+    }
+
+    @DeleteMapping("/chat/active")
+    public void leaveConversation() {
+
+        chatService.leaveConversation();
     }
 
     @GetMapping("/chat/{otherUserId}/messages")

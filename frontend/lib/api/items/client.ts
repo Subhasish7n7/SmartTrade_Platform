@@ -1,5 +1,5 @@
 import { CreateItemRequest, ItemResponse } from "@/lib/types/api/item"
-import { clientApi } from "../client"
+import { clientApi } from "../configs/client"
 
 export async function getMarketplaceItems() {
   const response = await clientApi.get<ItemResponse[]>("/items")

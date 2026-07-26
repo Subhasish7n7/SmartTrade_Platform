@@ -1,6 +1,6 @@
 "use client"
 
-import { clientApi } from "../client"
+import { clientApi } from "../configs/client"
 
 import { LoginRequest, RegisterRequest } from "@/lib/types/api/auth"
 

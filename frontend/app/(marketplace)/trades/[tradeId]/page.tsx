@@ -8,7 +8,6 @@ import { TradeStatusBadge } from "@/components/marketplace/trade/trade-status-ba
 import { Button } from "@/components/ui/button"
 import { getTrade } from "@/lib/api/trades/server"
 import { requireUser } from "@/lib/auth/require-user"
-import { TradeDetailsDemo } from "@/lib/mock/trade"
 import { TradeDetailsResponse, TradeItemResponse } from "@/lib/types/api/trade"
 import { MessageCircle } from "lucide-react"
 import Link from "next/link"
@@ -59,17 +58,13 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
                     Trade #{tradeId}
                   </h1>
                   <p className="text-muted-foreground mt-2">
-                    {isHistoryMode
-                      ? "Viewing a previous trade offer."
-                      : "Review the current proposal and continue negotiations."}
+                    {isHistoryMode ? "Viewing a previous trade offer." : "Review the current proposal and continue negotiations."}
                   </p>
                   <div className="mt-4">
                     <TradeStatusBadge status={status} />
                     {isHistoryMode && (
                       <div className="mt-2">
-                        <span className="rounded-full border px-3 py-1 text-xs font-medium">
-                          Historical Offer
-                        </span>
+                        <span className="rounded-full border px-3 py-1 text-xs font-medium">Historical Offer</span>
                       </div>
                     )}
                   </div>
@@ -144,10 +139,7 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
 
               {!isHistoryMode && (
                 <Section>
-                  <NegotiationHistory
-                    tradeId={trade.tradeId}
-                    history={trade.history ?? []}
-                  />
+                  <NegotiationHistory tradeId={trade.tradeId} history={trade.history ?? []} />
                 </Section>
               )}
             </div>
@@ -179,13 +171,10 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
                   </Link>
                 </div>
               </Section>
-              {!isHistoryMode &&
-                status !== "COMPLETED" &&
-                status !== "CANCELLED" &&
-                status !== "EXPIRED" && (
-                  <Section>
-                    <TradeDetailClient tradeId={trade.tradeId} />
-                  </Section>
+              {!isHistoryMode && status !== "COMPLETED" && status !== "CANCELLED" && status !== "EXPIRED" && (
+                <Section>
+                  <TradeDetailClient tradeId={trade.tradeId} />
+                </Section>
               )}
             </div>
           </div>

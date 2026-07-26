@@ -157,9 +157,7 @@ export function ChatPageClient({ currentUserId }: Props) {
           `}
         >
           <div className="p-5 border-b border-border/50 space-y-2">
-            <div className="hidden lg:block">
-              <BackButton />
-            </div>
+            
 
             <div>
               <h2 className="font-bold text-xl">Messages</h2>

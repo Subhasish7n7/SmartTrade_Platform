@@ -1,4 +1,4 @@
-import { serverApi } from "../server"
+import { serverApi } from "../configs/server"
 
 import { CurrentUser } from "@/lib/types/api/auth"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 
 import { useForm } from "react-hook-form"
 
@@ -24,10 +24,12 @@ import { loginSchema, LoginSchema } from "@/lib/validation/auth"
 import { login } from "@/lib/api/auth/auth.client"
 import { toast } from "sonner"
 
-export function LoginForm() {
+interface Props {
+  redirect: string;
+}
+
+export function LoginForm({ redirect }: Props) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect") ?? "/"
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),

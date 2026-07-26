@@ -29,5 +29,19 @@ public class TradeEntity {
     @Enumerated(EnumType.STRING)
     private TradeStatus status;
 
+    /*
+     * Two-step completion confirmation.
+     */
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean initiatorCompletionConfirmed = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean receiverCompletionConfirmed = false;
+
+    private LocalDateTime completionRequestedAt;
+
     private LocalDateTime createdAt;
 }

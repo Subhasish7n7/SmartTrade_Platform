@@ -7,8 +7,8 @@ import { PricingCard } from "@/components/marketplace/item-detail/pricing-card"
 import { SellerCard } from "@/components/marketplace/item-detail/seller-card"
 import { SimilarItems } from "@/components/marketplace/item-detail/similar-items"
 import { Badge } from "@/components/ui/badge"
+import { getCurrentUser } from "@/lib/api/auth/auth.server"
 import { getItemById } from "@/lib/api/items/server"
-import { demoItem } from "@/lib/mock/item-detail"
 import { Clock } from "lucide-react"
 import { notFound } from "next/navigation";
 
@@ -21,6 +21,7 @@ interface Props {
 export default async function ItemDetailPage({ params }: Props) {
   const { id } = await params
   const item = await getItemById(Number(id)).catch(() => null);
+  const user = await getCurrentUser().catch(() => null);
   if (!item) notFound();
 
   
@@ -95,11 +96,8 @@ export default async function ItemDetailPage({ params }: Props) {
                 </Section>
                 <Section>
                   <ActionButtons
-                    price={item.userPrice}
-                    forSale={item.forSale}
-                    forTrade={item.forTrade}
-                    itemId={item.itemId}
-                    otherUserId={item.seller.userId}
+                  item={item}
+                  userId={user?.id ?? null}
                   />
                 </Section>
                 <Section>

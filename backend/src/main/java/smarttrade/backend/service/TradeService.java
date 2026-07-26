@@ -31,6 +31,7 @@ public class TradeService {
     private final UserRepo userRepo;
     private final AuthenticatedUserService authenticatedUserService;
     private final TradeMapper tradeMapper;
+    private final NotificationService notificationService;
 
     @Transactional
     public TradeOfferEntity createTradeOffer(CreateTradeOfferRequest request) {
@@ -45,29 +46,11 @@ public class TradeService {
             throw new IllegalArgumentException("Cannot trade with yourself");
         }
 
-        List<ItemEntity> senderItems = itemRepo.findAllById(request.getSenderItemIds());
-        List<ItemEntity> receiverItems = itemRepo.findAllById(request.getReceiverItemIds());
+        List<ItemEntity> senderItems = loadItems(request.getSenderItemIds());
 
-        for (ItemEntity item : senderItems) {
-            if (!item.getUser().getUserId().equals(currentUser.getUserId())) {
-                throw new IllegalArgumentException("Sender does not own item");
-            }
-            if (!item.isAvailable()) {
-                throw new IllegalStateException("Sender item unavailable");
-            }
-            if (item.isLocked()) {throw new IllegalStateException("Sender item already locked");
-            }
-        }
+        List<ItemEntity> receiverItems = loadItems(request.getReceiverItemIds());
 
-        for (ItemEntity item : receiverItems) {
-            if (!item.getUser().getUserId().equals(receiver.getUserId())) {
-                throw new IllegalArgumentException("Receiver does not own requested item");
-            }
-
-            if (!item.isAvailable()) {
-                throw new IllegalStateException("Receiver item unavailable");
-            }
-        }
+        validateTradeItems(senderItems, receiverItems, currentUser, receiver);
 
         TradeEntity trade;
 
@@ -80,15 +63,20 @@ public class TradeService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            trade = tradeRepo.save(trade);
-
         } else {
-            trade = tradeRepo.findById(request.getTradeId())
-                    .orElseThrow(() ->
-                            new IllegalArgumentException("Trade not found"));
-        }
 
-        lockItems(senderItems, trade.getTradeId());
+            trade = tradeRepo.findById(request.getTradeId())
+                    .orElseThrow(() -> new IllegalArgumentException("Trade not found"));
+
+            if (trade.getStatus() != TradeStatus.OPEN && trade.getStatus() != TradeStatus.NEGOTIATING) {
+
+                throw new IllegalStateException("Trade can no longer receive offers.");
+            }
+
+            trade.setStatus(TradeStatus.NEGOTIATING);
+
+        }
+        trade = tradeRepo.save(trade);
 
         TradeOfferEntity offer = TradeOfferEntity.builder()
                 .sender(currentUser)
@@ -101,13 +89,20 @@ public class TradeService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        log.info(
-                "User {} created trade offer for trade {}",
-                currentUser.getEmail(),
-                trade.getTradeId()
+        log.info("User {} created trade offer {}", currentUser.getEmail(), trade.getTradeId());
+
+        TradeOfferEntity savedOffer = tradeOfferRepo.save(offer);
+
+        boolean counter = tradeOfferRepo.countByTrade_TradeId(trade.getTradeId()) > 1;
+
+        notificationService.notifyTradeOfferReceived(
+                currentUser,
+                receiver,
+                trade.getTradeId(),
+                counter
         );
 
-        return tradeOfferRepo.save(offer);
+        return savedOffer;
     }
     @Transactional
     public TradeOfferEntity createBuyOffer(CreateBuyRequest request) {
@@ -115,21 +110,22 @@ public class TradeService {
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
         ItemEntity targetItem = itemRepo.findById(request.getItemId())
-                        .orElseThrow(() -> new IllegalArgumentException("Item not found"));
-
-        if (!targetItem.isForSale()) {
-            throw new IllegalStateException("Item is not for sale");
-        }
-
-        if (!targetItem.isAvailable()) {
-            throw new IllegalStateException("Item unavailable");
-        }
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Item not found"));
 
         UserEntity seller = targetItem.getUser();
 
         if (seller.getUserId().equals(currentUser.getUserId())) {
-            throw new IllegalArgumentException("Cannot buy your own item");
+            throw new IllegalArgumentException(
+                    "Cannot buy your own item");
         }
+
+        if (!targetItem.isForSale()) {
+            throw new IllegalStateException(
+                    "Item is not for sale");
+        }
+
+        validateTradeItems(List.of(), List.of(targetItem), currentUser, seller);
 
         TradeEntity trade = TradeEntity.builder()
                 .initiator(currentUser)
@@ -141,23 +137,31 @@ public class TradeService {
         trade = tradeRepo.save(trade);
 
         TradeOfferEntity offer = TradeOfferEntity.builder()
-                        .sender(currentUser)
-                        .receiver(seller)
-                        .senderItems(List.of())
-                        .receiverItems(List.of(targetItem))
-                        .trade(trade)
-                        .createdBy(currentUser)
-                        .cashAdjustment(request.getOfferedPrice())
-                        .createdAt(LocalDateTime.now())
-                        .build();
+                .sender(currentUser)
+                .receiver(seller)
+                .senderItems(List.of())
+                .receiverItems(List.of(targetItem))
+                .trade(trade)
+                .createdBy(currentUser)
+                .cashAdjustment(request.getOfferedPrice())
+                .createdAt(LocalDateTime.now())
+                .build();
 
-        log.info(
-                "User {} created buy offer for item {}",
-                currentUser.getEmail(),
-                targetItem.getItemId()
+        TradeOfferEntity savedOffer = tradeOfferRepo.save(offer);
+
+        notificationService.notifyBuyOffer(
+                currentUser,
+                seller,
+                trade.getTradeId()
         );
 
-        return tradeOfferRepo.save(offer);
+        log.info(
+                "User {} created buy offer {}",
+                currentUser.getEmail(),
+                trade.getTradeId()
+        );
+
+        return savedOffer;
     }
 
     @Transactional
@@ -169,110 +173,264 @@ public class TradeService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("Trade not found"));
 
-        if (trade.getStatus() != TradeStatus.OPEN
-                && trade.getStatus() != TradeStatus.NEGOTIATING){
+        if (trade.getStatus() != TradeStatus.OPEN && trade.getStatus() != TradeStatus.NEGOTIATING) {
+
             throw new IllegalStateException("Trade cannot be accepted");
         }
 
-        TradeOfferEntity latestOffer = tradeOfferRepo
-                .findTopByTrade_TradeIdOrderByCreatedAtDesc(tradeId)
-                        .orElseThrow(() ->
-                                new IllegalStateException("No offers found"));
+        TradeOfferEntity latestOffer = tradeOfferRepo.findTopByTrade_TradeIdOrderByCreatedAtDesc(tradeId)
+                .orElseThrow(() -> new IllegalStateException("No offers found"));
 
-    /*
-        Only latest receiver can accept.
-    */
         if (!latestOffer.getReceiver().getUserId().equals(currentUser.getUserId())) {
-            throw new IllegalStateException("Only latest receiver can accept trade");
+
+            throw new IllegalStateException("Only the latest receiver can accept the trade.");
         }
+
+        /*
+         * Revalidate latest offer.
+         *
+         * Items may have changed ownership or become unavailable
+         * while negotiation was happening.
+         */
+        validateTradeItems(
+                latestOffer.getSenderItems(),
+                latestOffer.getReceiverItems(),
+                latestOffer.getSender(),
+                latestOffer.getReceiver()
+        );
 
         trade.setStatus(TradeStatus.ACCEPTED);
+
         tradeRepo.save(trade);
 
-        log.info(
-                "User {} accepted trade {}",
-                currentUser.getEmail(),
+        notificationService.notifyTradeAccepted(
+                currentUser,
+                latestOffer.getSender(),
                 tradeId
         );
+
+        log.info("User {} accepted trade {}", currentUser.getEmail(), tradeId);
     }
-    @Transactional
-    public void completeTrade(Long tradeId) {
-
-        UserEntity currentUser = authenticatedUserService.getCurrentUser();
-
-        TradeEntity trade = tradeRepo.findById(tradeId)
-                .orElseThrow(() -> new IllegalArgumentException("Trade not found"));
-
-        if (trade.getStatus() != TradeStatus.ACCEPTED) {
-            throw new IllegalStateException("Trade must be accepted first");
-        }
-
-        boolean isParticipant = trade.getInitiator().getUserId()
-                        .equals(currentUser.getUserId())
-                        ||
-                        trade.getReceiver().getUserId()
-                                .equals(currentUser.getUserId());
-
-        if (!isParticipant) {
-            throw new IllegalStateException("User not part of trade");
-        }
+    private void completeAcceptedTrade(TradeEntity trade) {
 
         TradeOfferEntity latestOffer = tradeOfferRepo
-                        .findTopByTrade_TradeIdOrderByCreatedAtDesc(tradeId)
-                        .orElseThrow(() ->
-                                new IllegalStateException("No offers found"));
+                .findTopByTrade_TradeIdOrderByCreatedAtDesc(trade.getTradeId())
+                .orElseThrow(() ->
+                        new IllegalStateException("No offers found"));
 
-        latestOffer.getSenderItems().forEach(i -> {
-            i.setAvailable(false);
-            i.setLocked(false);
-            i.setTraded(true);
-            i.setCompletedAt(LocalDateTime.now());
+        LocalDateTime completedAt = LocalDateTime.now();
+
+        latestOffer.getSenderItems().forEach(item -> {
+            item.setAvailable(false);
+            item.setTraded(true);
+            item.setCompletedAt(completedAt);
         });
 
-        latestOffer.getReceiverItems().forEach(i -> {
-            i.setAvailable(false);
-            i.setLocked(false);
-            i.setTraded(true);
-            i.setCompletedAt(LocalDateTime.now());
+        latestOffer.getReceiverItems().forEach(item -> {
+            item.setAvailable(false);
+            item.setTraded(true);
+            item.setCompletedAt(completedAt);
         });
 
         itemRepo.saveAll(latestOffer.getSenderItems());
         itemRepo.saveAll(latestOffer.getReceiverItems());
+
         trade.setStatus(TradeStatus.COMPLETED);
+        
+        trade.setInitiatorCompletionConfirmed(false);
+        trade.setReceiverCompletionConfirmed(false);
+
         tradeRepo.save(trade);
+
+        notificationService.notifyTradeCompleted(
+                trade.getInitiator(),
+                trade.getReceiver(),
+                trade.getTradeId()
+        );
+
+        notificationService.notifyTradeCompleted(
+                trade.getReceiver(),
+                trade.getInitiator(),
+                trade.getTradeId()
+        );
+
+        log.info("Trade {} completed successfully", trade.getTradeId());
     }
+    private void validateParticipant(TradeEntity trade, UserEntity user) {
+
+        boolean participant = trade.getInitiator().getUserId().equals(user.getUserId())
+                                      ||
+                              trade.getReceiver().getUserId().equals(user.getUserId());
+
+        if (!participant) {
+            throw new IllegalStateException("User not part of trade");
+        }
+    }
+    private List<ItemEntity> loadItems(List<Long> itemIds) {
+
+        List<ItemEntity> items = itemRepo.findAllById(itemIds);
+
+        if (items.size() != itemIds.size()) {
+            throw new IllegalArgumentException("One or more selected items do not exist.");
+        }
+
+        return items;
+    }
+    private void validateTradeItems(List<ItemEntity> senderItems, List<ItemEntity> receiverItems, UserEntity sender, UserEntity receiver) {
+
+        for (ItemEntity item : senderItems) {
+
+            if (!item.getUser().getUserId().equals(sender.getUserId())) {
+                throw new IllegalArgumentException("Sender does not own item.");
+            }
+
+            if (!item.isAvailable()) {
+                throw new IllegalStateException("Sender item unavailable.");
+            }
+
+            if (item.isSold()) {
+                throw new IllegalStateException("Sender item already sold.");
+            }
+
+            if (item.isTraded()) {
+                throw new IllegalStateException("Sender item already traded.");
+            }
+        }
+
+        for (ItemEntity item : receiverItems) {
+
+            if (!item.getUser().getUserId().equals(receiver.getUserId())) {
+                throw new IllegalArgumentException("Receiver does not own requested item.");
+            }
+
+            if (!item.isAvailable()) {
+                throw new IllegalStateException("Receiver item unavailable.");
+            }
+
+            if (item.isSold()) {
+                throw new IllegalStateException("Receiver item already sold.");
+            }
+
+            if (item.isTraded()) {
+                throw new IllegalStateException("Receiver item already traded.");
+            }
+        }
+    }
+
+    @Transactional
+    public void requestCompletion(Long tradeId) {
+
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+
+        TradeEntity trade = tradeRepo.findById(tradeId)
+                        .orElseThrow(() -> new IllegalArgumentException("Trade not found"));
+
+        validateParticipant(trade, currentUser);
+        if (trade.getStatus() != TradeStatus.ACCEPTED) {
+
+            throw new IllegalStateException(
+                    "Trade must be accepted first");
+        }
+
+        if (hasUserConfirmed(trade, currentUser)) {
+
+            return;
+        }
+
+        setUserConfirmed(trade, currentUser);
+
+        if (trade.getCompletionRequestedAt() == null) {
+            trade.setCompletionRequestedAt(LocalDateTime.now());
+        }
+
+        tradeRepo.save(trade);
+
+        UserEntity otherUser =
+                trade.getInitiator().getUserId()
+                        .equals(currentUser.getUserId())
+                        ? trade.getReceiver()
+                        : trade.getInitiator();
+
+        notificationService.notifyCompletionRequested(
+                currentUser,
+                otherUser,
+                tradeId
+        );
+    }
+
+    @Transactional
+    public void confirmCompletion(Long tradeId) {
+
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+
+        TradeEntity trade = tradeRepo.findById(tradeId)
+                        .orElseThrow(() -> new IllegalArgumentException("Trade not found"));
+
+        validateParticipant(trade, currentUser);
+
+        if (trade.getStatus() != TradeStatus.ACCEPTED) {
+
+            throw new IllegalStateException(
+                    "Trade must be accepted first");
+        }
+
+        if (hasUserConfirmed(trade, currentUser)) {
+
+            return;
+        }
+
+        setUserConfirmed(trade, currentUser);
+
+        if (!trade.getInitiatorCompletionConfirmed()
+                ||
+                !trade.getReceiverCompletionConfirmed()) {
+
+            tradeRepo.save(trade);
+
+            return;
+        }
+
+        completeAcceptedTrade(trade);
+    }
+
     @Transactional
     public void cancelTrade(Long tradeId) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
         TradeEntity trade = tradeRepo.findById(tradeId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException("Trade not found"));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Trade not found"));
 
-        boolean isParticipant = trade.getInitiator().getUserId()
-                        .equals(currentUser.getUserId())
-                        ||
-                        trade.getReceiver().getUserId()
-                                .equals(currentUser.getUserId());
-
-        if (!isParticipant) {
-            throw new IllegalStateException("User not part of trade");
+        if (trade.getStatus() == TradeStatus.COMPLETED) {
+            throw new IllegalStateException("Completed trades cannot be cancelled.");
         }
 
-        TradeOfferEntity latestOffer = tradeOfferRepo
-                        .findTopByTrade_TradeIdOrderByCreatedAtDesc(tradeId)
-                        .orElseThrow(() ->
-                                new IllegalStateException("No offers found"));
+        if (trade.getStatus() == TradeStatus.CANCELLED) {
+            return;
+        }
 
-        latestOffer.getSenderItems().forEach(i -> {
-            i.setLocked(false);
-            i.setLockedByTradeId(null);
-        });
+        if (!trade.getInitiator().getUserId().equals(currentUser.getUserId())
+                && !trade.getReceiver().getUserId().equals(currentUser.getUserId())) {
 
-        itemRepo.saveAll(latestOffer.getSenderItems());
+            throw new IllegalStateException("Only trade participants can cancel the trade.");
+        }
+
         trade.setStatus(TradeStatus.CANCELLED);
+
         tradeRepo.save(trade);
+
+        UserEntity otherUser = trade.getInitiator().getUserId().equals(currentUser.getUserId())
+                        ? trade.getReceiver()
+                        : trade.getInitiator();
+
+        notificationService.notifyTradeCancelled(
+                currentUser,
+                otherUser,
+                tradeId
+        );
+
+        log.info("User {} cancelled trade {}", currentUser.getEmail(), tradeId);
     }
 
     public List<TradeInboxResponse> getTradeInbox() {
@@ -337,15 +495,23 @@ public class TradeService {
                         .build())
                 .toList();
     }
+    private boolean hasUserConfirmed(TradeEntity trade, UserEntity user) {
 
-    private void lockItems(List<ItemEntity> items, Long tradeId) {
-        for (ItemEntity item : items) {
-            if (item.isLocked()) {
-                throw new IllegalStateException("Item already locked");
-            }
-            item.setLocked(true);
-            item.setLockedByTradeId(tradeId);
+        if (trade.getInitiator().getUserId().equals(user.getUserId())) {
+
+            return trade.getInitiatorCompletionConfirmed();
         }
-        itemRepo.saveAll(items);
+
+        return trade.getReceiverCompletionConfirmed();
+    }
+    private void setUserConfirmed(TradeEntity trade, UserEntity user) {
+
+        if (trade.getInitiator().getUserId().equals(user.getUserId())) {
+
+            trade.setInitiatorCompletionConfirmed(true);
+
+        } else {
+            trade.setReceiverCompletionConfirmed(true);
+        }
     }
 }

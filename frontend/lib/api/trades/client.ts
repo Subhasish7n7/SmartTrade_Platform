@@ -1,4 +1,4 @@
-import { clientApi } from "@/lib/api/client"
+import { clientApi } from "@/lib/api/configs/client"
 
 import { CreateBuyRequest, CreateTradeOfferRequest, TradeOfferResponse } from "@/lib/types/api/trade"
 

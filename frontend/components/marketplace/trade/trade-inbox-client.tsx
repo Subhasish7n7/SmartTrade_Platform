@@ -21,10 +21,6 @@ export function TradeInboxClient({ trades }: props) {
     <main className="relative z-10 pt-20 pb-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <AnimatedPage>
-          <Section>
-            <BackButton />
-          </Section>
-
           <Section className="trade-inbox-hero rounded-2xl px-6 py-4 mb-4 border border-border/50">
             <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[var(--trust-blue)] via-[var(--negotiation-violet)] to-[var(--premium-gold)] bg-clip-text text-transparent">
               Trade Inbox

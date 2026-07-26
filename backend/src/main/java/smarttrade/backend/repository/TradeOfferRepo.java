@@ -25,7 +25,9 @@ public interface TradeOfferRepo extends JpaRepository<TradeOfferEntity, Long> {
     JOIN t.sender s
     WHERE t.trade.tradeId = :tradeId
     ORDER BY t.createdAt DESC
-""")
+    """)
     List<TradeHistoryResponse> findTradeHistoryByTradeId(Long tradeId);
+
+    long countByTrade_TradeId(Long tradeId);
 }
 

@@ -10,7 +10,6 @@ import { MarketplaceItemCard, MarketplaceItemCardSkeleton } from "@/components/m
 import { Navbar } from "@/components/marketplace/navbar"
 
 import { getMarketplaceItems } from "@/lib/api/items/client"
-import { marketplaceItems } from "@/lib/mock/marketplace-items"
 import { ItemResponse } from "@/lib/types/api/item"
 
 export default function MarketplacePage() {

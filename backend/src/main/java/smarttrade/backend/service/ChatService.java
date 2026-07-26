@@ -1,6 +1,7 @@
 package smarttrade.backend.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.dto.chat.ChatInboxResponse;
 import smarttrade.backend.dto.chat.ChatMessageResponse;
@@ -25,6 +26,9 @@ public class ChatService {
     private final AuthenticatedUserService authenticatedUserService;
     private final ChatConversationRepo conversationRepo;
     private final TradeRepo tradeRepo;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
+    private final ActiveConversationRegistry activeConversationRegistry;
 
     private ChatConversationEntity getOrCreateConversation(UserEntity user1, UserEntity user2) {
 
@@ -46,6 +50,21 @@ public class ChatService {
                                     .build()
                     );
                 });
+    }
+    public void enterConversation(Long conversationId) {
+
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+
+        activeConversationRegistry.enterConversation(
+                currentUser.getUserId(),
+                conversationId
+        );
+    }
+    public void leaveConversation() {
+
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+
+        activeConversationRegistry.leaveConversation(currentUser.getUserId());
     }
 
     public List<ChatInboxResponse> getInbox() {
@@ -83,7 +102,7 @@ public class ChatService {
                 .toList();
     }
 
-    public ChatMessageResponse saveMessage(Long otherUserId, String message) {
+    public void sendMessage(Long otherUserId, String message) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
@@ -101,13 +120,24 @@ public class ChatService {
 
         chatMessage = chatMessageRepo.save(chatMessage);
 
-        return ChatMessageResponse.builder()
-                .id(chatMessage.getId())
-                .senderId(currentUser.getUserId())
-                .senderName(currentUser.getName())
-                .message(chatMessage.getMessage())
-                .timestamp(chatMessage.getTimestamp())
-                .build();
+        ChatMessageResponse response =
+                ChatMessageResponse.builder()
+                        .id(chatMessage.getId())
+                        .senderId(currentUser.getUserId())
+                        .senderName(currentUser.getName())
+                        .message(chatMessage.getMessage())
+                        .timestamp(chatMessage.getTimestamp())
+                        .build();
+        messagingTemplate.convertAndSendToUser(
+                otherUser.getEmail(),
+                "/queue/messages",
+                response
+        );
+        notificationService.notifyChatMessage(
+                currentUser,
+                otherUser,
+                conversation.getId()
+        );
     }
 
     public UserEntity getUser(Long userId) {

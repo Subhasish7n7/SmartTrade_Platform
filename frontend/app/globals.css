@@ -451,8 +451,36 @@
       transparent 40%
     );
 }
+.trade-summary-pill{
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    gap:2px;
+
+    min-height:58px;
+
+    padding:.45rem .7rem;
+
+    border-radius:14px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,.035),
+            rgba(255,255,255,.015)
+        );
+
+    border:1px solid rgba(255,255,255,.05);
+
+    transition:.2s;
+
+}
 .trade-stat {
-  @apply rounded-xl px-3 py-2;
+  @apply rounded-xl px-2.5 py-1.5;
 
   background:
     linear-gradient(
