@@ -1,4 +1,4 @@
-package smarttrade.backend.entities;
+package smarttrade.backend.entities.trade;
 
 public enum TradeStatus {
 

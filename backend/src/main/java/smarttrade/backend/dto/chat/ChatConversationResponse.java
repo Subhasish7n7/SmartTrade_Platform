@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
-public class ChatInboxResponse {
+public class ChatConversationResponse {
+    private Long conversationId;
     private Long otherUserId;
     private String otherUserName;
     private String avatarUrl;

@@ -1,58 +1,45 @@
-"use client";
+"use client"
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-} from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"
+import { createContext, useContext, useEffect, useRef } from "react"
 
 const NavigationContext = createContext({
   goBack: () => {},
-});
+})
 
-export function NavigationProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
+export function NavigationProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
 
-  const history = useRef<string[]>([]);
+  const history = useRef<string[]>([])
 
   useEffect(() => {
-    const stack = history.current;
+    const stack = history.current
 
     if (stack[stack.length - 1] !== pathname) {
-      stack.push(pathname);
+      stack.push(pathname)
     }
-  }, [pathname]);
+  }, [pathname])
 
   function goBack() {
-    const stack = history.current;
+    const stack = history.current
 
     // Remove current page
-    stack.pop();
+    stack.pop()
 
     // Previous page
-    const previous = stack.pop();
+    const previous = stack.pop()
 
     if (previous) {
-      router.push(previous);
+      router.push(previous)
     } else {
-      router.push("/");
+      router.push("/")
     }
   }
 
-  return (
-    <NavigationContext.Provider value={{ goBack }}>
-      {children}
-    </NavigationContext.Provider>
-  );
+  return <NavigationContext.Provider value={{ goBack }}>{children}</NavigationContext.Provider>
 }
 
 export function useNavigationHistory() {
-  return useContext(NavigationContext);
+  return useContext(NavigationContext)
 }

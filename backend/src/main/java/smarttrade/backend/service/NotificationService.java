@@ -15,6 +15,7 @@ import smarttrade.backend.entities.notification.NotificationResourceType;
 import smarttrade.backend.entities.notification.NotificationType;
 import smarttrade.backend.repository.NotificationRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
+import smarttrade.backend.websocket.ActiveConversationRegistry;
 
 import java.time.LocalDateTime;
 
@@ -59,45 +60,13 @@ public class NotificationService {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
-        NotificationEntity notification =  notificationRepo.findById(id)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Notification not found"));
-
-        if (!notification.getRecipient().getUserId()
-                .equals(currentUser.getUserId())) {
-
-            throw new IllegalStateException(
-                    "Access denied");
-        }
-
-        if (notification.isRead()) {
-            return;
-        }
-
-        notification.setRead(true);
-        notification.setReadAt(LocalDateTime.now());
-
-        notificationRepo.save(notification);
+        notificationRepo.markRead(id, currentUser.getUserId());
     }
     public void delete(Long id) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
-        NotificationEntity notification =
-                notificationRepo.findById(id)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Notification not found"));
-
-        if (!notification.getRecipient().getUserId()
-                .equals(currentUser.getUserId())) {
-
-            throw new IllegalStateException(
-                    "Access denied");
-        }
-
-        notificationRepo.delete(notification);
+        notificationRepo.deleteOwned(id, currentUser.getUserId());
     }
 
     public void markAllRead() {
@@ -268,7 +237,6 @@ public class NotificationService {
                         .resourceId(resourceId)
                         .message(message)
                         .isRead(false)
-                        .createdAt(LocalDateTime.now())
                         .build();
 
         notification = notificationRepo.save(notification);

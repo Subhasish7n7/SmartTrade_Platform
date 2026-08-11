@@ -46,11 +46,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({children,}: Readonly<{children: React.ReactNode}>) {
   return (
     <html lang="en" className="dark bg-background">
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>

@@ -1,7 +1,9 @@
-package smarttrade.backend.entities;
+package smarttrade.backend.entities.chat;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import smarttrade.backend.entities.UserEntity;
 
 import java.time.LocalDateTime;
 
@@ -28,5 +30,7 @@ public class ChatMessageEntity {
     @Column(nullable = false, length = 2000)
     private String message;
 
-    private LocalDateTime timestamp;
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

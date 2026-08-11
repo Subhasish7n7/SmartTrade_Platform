@@ -3,17 +3,14 @@ package smarttrade.backend.Mappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.trade.*;
-import smarttrade.backend.entities.TradeEntity;
-import smarttrade.backend.entities.TradeOfferEntity;
+import smarttrade.backend.entities.trade.TradeEntity;
+import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.TradeOfferRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 
-import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor

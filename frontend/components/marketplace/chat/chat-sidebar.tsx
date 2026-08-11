@@ -4,15 +4,15 @@ import * as React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { ChatInboxItem } from "@/lib/types/ui/chat"
+import { ChatConversationResponse } from "@/lib/types/api/chat"
 
 interface Props {
-  conversations: ChatInboxItem[]
+  conversations: ChatConversationResponse[]
 
   selectedUserId?: number
 
   onSelect: (
-    conversation: ChatInboxItem
+    conversation: ChatConversationResponse
   ) => void
 }
 

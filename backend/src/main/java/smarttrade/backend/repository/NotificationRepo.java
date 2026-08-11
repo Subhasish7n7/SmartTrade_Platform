@@ -8,29 +8,39 @@ import org.springframework.stereotype.Repository;
 import smarttrade.backend.entities.notification.NotificationEntity;
 
 @Repository
-public interface NotificationRepo
-        extends JpaRepository<NotificationEntity,Long> {
+public interface NotificationRepo extends JpaRepository<NotificationEntity,Long> {
 
     Page<NotificationEntity> findByRecipient_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     Long countByRecipient_UserIdAndIsReadFalse(Long userId);
 
     @Modifying
-    @Transactional
     @Query("""
-        update NotificationEntity n
-        set
-            n.isRead=true,
-            n.readAt=CURRENT_TIMESTAMP
-        where
-            n.id=:id
-            and
-            n.isRead=false
-        """)
-    int markRead(Long id);
+    update NotificationEntity n
+    set
+        n.isRead=true,
+        n.readAt=CURRENT_TIMESTAMP
+    where
+        n.id=:id
+    and
+        n.recipient.userId=:userId
+    and
+        n.isRead=false
+    """)
+    int markRead(Long id, Long userId);
 
     @Modifying
-    @Transactional
+    @Query("""
+    delete
+    from NotificationEntity n
+    where
+        n.id=:id
+    and
+        n.recipient.userId=:userId
+    """)
+    int deleteOwned(Long id, Long userId);
+
+    @Modifying
     @Query("""
         update NotificationEntity n
         set

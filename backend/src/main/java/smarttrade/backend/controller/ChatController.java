@@ -1,14 +1,12 @@
 package smarttrade.backend.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.web.bind.annotation.*;
-import smarttrade.backend.dto.chat.ChatInboxResponse;
-import smarttrade.backend.dto.chat.ChatMessageRequest;
-import smarttrade.backend.dto.chat.ChatMessageResponse;
-import smarttrade.backend.dto.chat.PinTradeRequest;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.dto.chat.*;
 import smarttrade.backend.service.ChatService;
 
 import java.util.List;
@@ -21,33 +19,29 @@ public class ChatController {
 
 
     @MessageMapping("/chat.send")
-    public void sendMessage(ChatMessageRequest request) {
+    public void sendMessage(@Valid ChatMessageRequest request) {
 
-        chatService.sendMessage(request.getOtherUserId(), request.getMessage()
-        );
+        chatService.sendMessage(request.getOtherUserId(), request.getMessage());
     }
-    @PostMapping("/chat/{conversationId}/active")
-    public void enterConversation(
-            @PathVariable Long conversationId) {
+    @MessageMapping("/chat.presence")
+    public void updatePresence(ConversationPresenceRequest request, SimpMessageHeaderAccessor accessor) {
 
-        chatService.enterConversation(conversationId);
-    }
-
-    @DeleteMapping("/chat/active")
-    public void leaveConversation() {
-
-        chatService.leaveConversation();
+        chatService.updatePresence(accessor.getSessionId(), request.getConversationId());
     }
 
     @GetMapping("/chat/{otherUserId}/messages")
-    public List<ChatMessageResponse> getMessages(@PathVariable Long otherUserId) {
-        return chatService.getConversation(otherUserId);
+    public Page<ChatMessageResponse> getMessages(@PathVariable Long otherUserId,
+                                                 @RequestParam(defaultValue="0") int page,
+                                                 @RequestParam(defaultValue="40") int size
+    ){
+
+        return chatService.getConversation(otherUserId, page, size);
     }
     @GetMapping("/chat/inbox")
-    public List<ChatInboxResponse> getInbox() {
-
+    public List<ChatConversationResponse> getInbox() {
         return chatService.getInbox();
     }
+
     @PutMapping("/chat/{otherUserId}/pin")
     public void pinTrade(@PathVariable Long otherUserId, @RequestBody PinTradeRequest request) {
 

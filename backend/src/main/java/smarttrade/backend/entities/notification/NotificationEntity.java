@@ -2,6 +2,7 @@ package smarttrade.backend.entities.notification;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import smarttrade.backend.entities.UserEntity;
 
 import java.time.LocalDateTime;
@@ -71,6 +72,7 @@ public class NotificationEntity {
 
     private LocalDateTime readAt;
 
-    @Column(nullable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

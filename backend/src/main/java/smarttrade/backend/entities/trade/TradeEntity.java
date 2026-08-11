@@ -1,10 +1,11 @@
-package smarttrade.backend.entities;
+package smarttrade.backend.entities.trade;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import smarttrade.backend.entities.UserEntity;
 
 import java.time.LocalDateTime;
 

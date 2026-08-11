@@ -1,6 +1,5 @@
 "use client"
 
-import { ChatMessage } from "@/lib/types/ui/chat"
 
 interface Props {
   message: ChatMessage

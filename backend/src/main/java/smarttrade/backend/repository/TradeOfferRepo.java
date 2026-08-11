@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import smarttrade.backend.dto.trade.TradeHistoryResponse;
-import smarttrade.backend.entities.TradeOfferEntity;
+import smarttrade.backend.entities.trade.TradeOfferEntity;
 
 import java.util.List;
 import java.util.Optional;

@@ -6,8 +6,6 @@ import lombok.Data;
 @Data
 @Builder
 public class NotificationWebsocketResponse {
-
     private NotificationResponse notification;
-
     private Long unreadCount;
 }

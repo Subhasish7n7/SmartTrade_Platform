@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/avatar"
 
 import { Button } from "@/components/ui/button"
-import { ChatInboxItem } from "@/lib/types/ui/chat"
+import { ChatConversationResponse} from "@/lib/types/api/chat"
 import { ArrowLeft } from "lucide-react"
 
 interface Props {
-  conversation: ChatInboxItem
+  conversation: ChatConversationResponse
   showConversationBack?: boolean
   onConversationBack?: () => void
 }

@@ -5,6 +5,10 @@ import SockJS from "sockjs-client";
 
 import { API_BASE_URL } from "@/lib/config";
 
+type ConnectionListener = () => void;
+
+const connectionListeners = new Set<ConnectionListener>();
+
 export const stompClient = new Client({
   webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
 
@@ -12,6 +16,10 @@ export const stompClient = new Client({
 
   onConnect: () => {
     console.log("WebSocket connected");
+
+    connectionListeners.forEach((listener) => {
+      listener();
+    });
   },
 
   onDisconnect: () => {
@@ -22,3 +30,15 @@ export const stompClient = new Client({
     console.error("STOMP Error:", frame.headers["message"]);
   },
 });
+
+export function onWebSocketConnected(listener: ConnectionListener): () => void {
+  connectionListeners.add(listener);
+
+  if (stompClient.connected) {
+    listener();
+  }
+
+  return () => {
+    connectionListeners.delete(listener);
+  };
+}

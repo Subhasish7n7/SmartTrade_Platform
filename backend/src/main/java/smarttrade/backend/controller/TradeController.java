@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import smarttrade.backend.Mappers.TradeMapper;
 import smarttrade.backend.dto.trade.*;
-import smarttrade.backend.entities.TradeOfferEntity;
+import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.service.TradeService;
 
 import java.util.List;

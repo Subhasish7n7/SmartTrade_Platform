@@ -17,13 +17,21 @@ public class UserEntity {
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     @Column(name = "user_id")
     private Long userId;
+
     @Column(nullable = false, unique = true)
     private String email;
+
     @Column(nullable = false)
     private String password;
+
     @Column(nullable = false)
     private String name;
+
     private  String phone_no;
+
+    @Column(length = 500)
+    private String avatarUrl;
+
     private double trustScore = 0.0;
     private int totalListings = 0;
     private int successfulTrades = 0;

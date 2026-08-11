@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import smarttrade.backend.entities.TradeEntity;
-import smarttrade.backend.entities.TradeStatus;
+import smarttrade.backend.entities.trade.TradeEntity;
+import smarttrade.backend.entities.trade.TradeStatus;
 import smarttrade.backend.repository.TradeRepo;
 
 import java.time.LocalDateTime;
