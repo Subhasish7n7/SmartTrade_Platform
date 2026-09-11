@@ -2,26 +2,16 @@ package smarttrade.backend.websocket;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class ActiveConversationRegistry {
 
-    /*
-        sessionId -> session
-     */
     private final ConcurrentHashMap<String, ActiveConversationSession> sessions = new ConcurrentHashMap<>();
 
-    /*
-        conversationId
-            ↓
-        userId
-            ↓
-        active websocket session count
-     */
-    private final ConcurrentHashMap<Long, ConcurrentHashMap<Long, AtomicInteger>> conversationPresence =
-            new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, ConcurrentHashMap<Long, AtomicInteger>> conversationPresence = new ConcurrentHashMap<>();
 
     public void updatePresence(String sessionId, Long userId, Long conversationId) {
 
@@ -46,14 +36,15 @@ public class ActiveConversationRegistry {
                 .incrementAndGet();
     }
 
-    public void disconnect(String sessionId) {
+    public ActiveConversationSession disconnect(String sessionId) {
 
-        ActiveConversationSession removed =
-                sessions.remove(sessionId);
+        ActiveConversationSession removed = sessions.remove(sessionId);
 
         if (removed != null) {
             removePresence(removed);
         }
+
+        return removed;
     }
 
     public boolean isViewingConversation(Long userId, Long conversationId) {
@@ -69,9 +60,26 @@ public class ActiveConversationRegistry {
         return count != null && count.get() > 0;
     }
 
+    public boolean isUserActiveInConversation(Long userId, Long conversationId) {
+
+        return isViewingConversation(userId, conversationId);
+    }
+
+    public Set<Long> getActiveUserIds(Long conversationId) {
+
+        ConcurrentHashMap<Long, AtomicInteger> users = conversationPresence.get(conversationId);
+
+        if (users == null) {
+            return Set.of();
+        }
+
+        return Set.copyOf(users.keySet());
+    }
+
     private void removePresence(ActiveConversationSession session) {
 
-        ConcurrentHashMap<Long, AtomicInteger> users = conversationPresence.get(session.getConversationId());
+        ConcurrentHashMap<Long, AtomicInteger> users =
+                conversationPresence.get(session.getConversationId());
 
         if (users == null) {
             return;
@@ -91,5 +99,4 @@ public class ActiveConversationRegistry {
             conversationPresence.remove(session.getConversationId());
         }
     }
-
 }

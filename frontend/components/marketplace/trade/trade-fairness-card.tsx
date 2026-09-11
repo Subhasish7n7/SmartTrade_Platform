@@ -5,9 +5,10 @@ import { Minus, Scale, TrendingDown, TrendingUp } from "lucide-react"
 interface Props {
   yourValue: number
   theirValue: number
+  cashAdjustment?: number
 }
 
-export function TradeFairnessCard({ yourValue, theirValue }: Props) {
+export function TradeFairnessCard({ yourValue, theirValue, cashAdjustment }: Props) {
   const fairness = yourValue && theirValue ? Math.round((Math.min(yourValue, theirValue) / Math.max(yourValue, theirValue)) * 100) : 0
   const difference = Math.abs(yourValue - theirValue)
   const excellent = fairness >= 95
@@ -68,21 +69,23 @@ export function TradeFairnessCard({ yourValue, theirValue }: Props) {
       <div className={`rounded-lg p-2 text-xs leading-relaxed ${status.bg}`}>
         {difference === 0 && "Excellent balance. This trade is likely to feel fair to both parties."}
 
-        {yourValue > theirValue && (
-          <>
-            <p>• You're offering ₹{difference.toLocaleString()} more.</p>
-            <p>• Consider asking for cash or another item.</p>
-            <p>• This offer currently favors the seller.</p>
-          </>
-        )}
+            {yourValue > theirValue && (
+              <>
+                <p>• You're offering ₹{difference.toLocaleString()} more.</p>
+                <p>• Consider asking for cash or another item.</p>
+                <p>• This offer currently favors the seller.</p>
+              </>
+            )}
 
-        {theirValue > yourValue && (
-          <>
-            <p>• You're receiving ₹{difference.toLocaleString()} more.</p>
-            <p>• The seller may expect additional value.</p>
-            <p>• Consider adding cash to improve acceptance.</p>
-          </>
-        )}
+            {theirValue > yourValue && (
+              <>
+                <p>• You're receiving ₹{difference.toLocaleString()} more.</p>
+                <p>• The seller may expect additional value.</p>
+                <p>• Consider adding cash to improve acceptance.</p>
+              </>
+            )}
+          
+       
       </div>
     </div>
   )

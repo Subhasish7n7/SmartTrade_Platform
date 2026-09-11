@@ -3,6 +3,8 @@ package smarttrade.backend.dto.item;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import smarttrade.backend.entities.item.ItemCategory;
+import smarttrade.backend.entities.item.ItemCondition;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,8 +20,9 @@ public class ItemResponse {
     private Integer userPrice;
     private SellerSummaryDto seller;
     private String description;              // Item description
-    private String category;                 // Category (e.g., electronics, books)
-    private String condition;                // "new", "used - like new", "used - good", etc.
+    private ItemCategory category;                 // Category (e.g., electronics, books)
+    private ItemCondition condition;                // "new", "used - like new", "used - good", etc.
+    private String customCategory;
     private List<String> labels;            // Keywords, e.g., ["gaming", "intel", "DDR4"]
     private List<String> imageUrls;
     private Double latitude;                // For location-based filtering

@@ -20,6 +20,12 @@ export function ActionButtons({ item, userId }: Props) {
 
   const isOwner = userId != null && userId === item.seller.userId
 
+  console.log("TRADE BUTTON DATA", {
+    itemId: item.itemId,
+    seller: item.seller,
+    sellerUserId: item.seller?.userId,
+  })
+
   return (
     <div className="content-surface flex flex-col gap-3">
       {isOwner ? (
@@ -34,7 +40,14 @@ export function ActionButtons({ item, userId }: Props) {
           )}
 
           {item.forTrade && (
-            <Link href={`/trades/create/${item.seller.userId}?itemId=${item.itemId}`}>
+            <Link
+              href={{
+                pathname: `/trades/create/${item.seller.userId}`,
+                query: {
+                  itemId: item.itemId.toString(),
+                },
+              }}
+            >
               <Button variant="trade" className="w-full h-14 text-lg font-semibold rounded-xl">
                 <ArrowLeftRight className="h-5 w-5 mr-2" />
                 Make Trade Offer

@@ -3,7 +3,9 @@ package smarttrade.backend.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
+import smarttrade.backend.dto.notification.NotificationCountResponse;
 import smarttrade.backend.dto.notification.NotificationResponse;
+import smarttrade.backend.entities.notification.NotificationResourceType;
 import smarttrade.backend.service.NotificationService;
 
 @RestController
@@ -36,6 +38,15 @@ public class NotificationController {
     public void markRead(@PathVariable Long id){
 
         notificationService.markRead(id);
+    }
+    @PatchMapping("/module-read")
+    public void markModuleRead(@RequestParam NotificationResourceType resourceType) {
+        notificationService.markModuleRead(resourceType);
+    }
+
+    @GetMapping("/counts")
+    public NotificationCountResponse getCounts() {
+        return notificationService.getNotificationCounts();
     }
 
     @PatchMapping("/read-all")

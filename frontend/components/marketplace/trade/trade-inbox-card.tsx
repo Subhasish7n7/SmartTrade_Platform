@@ -52,9 +52,9 @@ export function TradeInboxCard(trade: TradeInboxResponse) {
             </div>
 
             <div>
-              <p className="text-xs text-muted-foreground">Difference</p>
+              <p className="text-xs text-muted-foreground">Cash Adjustment</p>
 
-              <p className="font-bold text-warning">₹{trade.valueDifference.toLocaleString()}</p>
+              <p className="font-bold text-warning">₹{trade.cashAdjustment.toLocaleString()}</p>
             </div>
           </div>
         </div>

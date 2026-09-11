@@ -1,5 +1,6 @@
 package smarttrade.backend.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
@@ -56,29 +58,27 @@ public class WebSocketAuthHandshakeInterceptor implements HandshakeInterceptor {
 
         try {
 
-            String email = jwtService.extractEmail(token);
+            Claims claims = jwtService.parseAndValidate(token);
 
-            UserDetails user = userDetailsService.loadUserByUsername(email);
+            String email = claims.getSubject();
 
-            if (!jwtService.isTokenValid(token, email)) {
-                return false;
-            }
+            UserDetails user =
+                    userDetailsService.loadUserByUsername(email);
 
-            attributes.put(
-                    "authentication",
+            Authentication authentication =
                     new UsernamePasswordAuthenticationToken(
                             user,
                             null,
                             user.getAuthorities()
-                    )
-            );
+                    );
+
+            attributes.put("authentication", authentication);
 
             return true;
 
-        } catch (Exception ex) {
+        } catch (JwtException | IllegalArgumentException ex) {
 
             return false;
-
         }
 
     }

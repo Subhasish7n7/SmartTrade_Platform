@@ -1,5 +1,6 @@
 package smarttrade.backend.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -43,13 +44,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        /*
-            Extract Authorization header.
-
-            Expected format:
-            Authorization: Bearer TOKEN
-        */
-
         String token = getJwt(request);
 
         if (token == null) {
@@ -57,49 +51,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         try {
+            Claims claims = jwtService.parseAndValidate(token);
 
-            String email = jwtService.extractEmail(token);
+            String email = claims.getSubject();
 
-        /*
-            Authenticate only if:
-            - email exists
-            - user not already authenticated
-        */
-        if (email != null
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(email);
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
 
-            /*
-                Validate token.
-            */
-            if (jwtService.isTokenValid(token, userDetails.getUsername())) {
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(request)
+            );
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+            SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                /*
-                    Save authenticated user into Spring Security context.
-
-                    This is what makes:
-                    SecurityContextHolder.getContext().getAuthentication()
-                    work later.
-                */
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        } catch (JwtException | IllegalArgumentException e) {
+            SecurityContextHolder.clearContext();
         }
-    } catch (JwtException e) {
-        SecurityContextHolder.clearContext();
-    }
         filterChain.doFilter(request, response);
     }
 }

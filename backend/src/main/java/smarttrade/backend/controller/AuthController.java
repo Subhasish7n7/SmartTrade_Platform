@@ -6,7 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import smarttrade.backend.Mappers.UserMapper;
-import smarttrade.backend.dto.auth.AuthResponse;
+import org.springframework.security.web.csrf.CsrfToken;
+import smarttrade.backend.dto.auth.CsrfResponse;
 import smarttrade.backend.dto.auth.CurrentUserResponse;
 import smarttrade.backend.dto.auth.LoginRequest;
 import smarttrade.backend.dto.auth.RegisterRequest;
@@ -50,6 +51,12 @@ public class AuthController {
     public ResponseEntity<Void> logout(HttpServletResponse response) {
         cookieService.clearJwtCookie(response);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<CsrfResponse> csrf(CsrfToken csrfToken) {
+
+        return ResponseEntity.ok(new CsrfResponse(csrfToken.getToken()));
     }
 
     @GetMapping("/me")

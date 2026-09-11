@@ -1,83 +1,82 @@
-"use client";
+"use client"
 
-import { IMessage, StompSubscription } from "@stomp/stompjs";
+import { IMessage, StompSubscription } from "@stomp/stompjs"
 
-import { stompClient } from "./websocket";
+import { stompClient } from "./websocket"
 
-import { ChatEvent } from "@/lib/types/api/chat";
-import { NotificationWebsocketResponse } from "@/lib/types/api/notifications";
+import { ChatEvent, ChatPresenceEvent } from "@/lib/types/api/chat"
 
-let chatSubscription: StompSubscription | null = null;
-let notificationSubscription: StompSubscription | null = null;
+import { NotificationWebsocketResponse } from "@/lib/types/api/notifications"
 
-export function subscribeToChat(
-  callback: (event: ChatEvent) => void
-): StompSubscription | null {
+let chatSubscription: StompSubscription | null = null
+let presenceSubscription: StompSubscription | null = null
+let notificationSubscription: StompSubscription | null = null
+
+export function subscribeToChat(callback: (event: ChatEvent) => void): StompSubscription | null {
   if (!stompClient.connected) {
-    console.warn("Cannot subscribe to chat: WebSocket not connected");
-    return null;
+    return null
   }
 
-  chatSubscription?.unsubscribe();
+  chatSubscription?.unsubscribe()
 
-  chatSubscription = stompClient.subscribe(
-    "/user/queue/messages",
-    (frame: IMessage) => {
-      try {
-        const event = JSON.parse(frame.body) as ChatEvent;
-
-        callback(event);
-      } catch (error) {
-        console.error(
-          "Failed to parse chat WebSocket event",
-          error
-        );
-      }
+  chatSubscription = stompClient.subscribe("/user/queue/messages", (frame: IMessage) => {
+    try {
+      callback(JSON.parse(frame.body) as ChatEvent)
+    } catch (error) {
+      console.error("Failed to parse chat WebSocket event", error)
     }
-  );
+  })
 
-  return chatSubscription;
+  return chatSubscription
 }
 
 export function unsubscribeFromChat() {
-  chatSubscription?.unsubscribe();
-  chatSubscription = null;
+  chatSubscription?.unsubscribe()
+  chatSubscription = null
 }
 
-export function subscribeToNotifications(
-  callback: (event: NotificationWebsocketResponse) => void
-): StompSubscription | null {
+export function subscribeToPresence(callback: (event: ChatPresenceEvent) => void): StompSubscription | null {
   if (!stompClient.connected) {
-    console.warn(
-      "Cannot subscribe to notifications: WebSocket not connected"
-    );
-
-    return null;
+    return null
   }
 
-  notificationSubscription?.unsubscribe();
+  presenceSubscription?.unsubscribe()
 
-  notificationSubscription = stompClient.subscribe(
-    "/user/queue/notifications",
-    (frame: IMessage) => {
-      try {
-        const event =
-          JSON.parse(frame.body) as NotificationWebsocketResponse;
-
-        callback(event);
-      } catch (error) {
-        console.error(
-          "Failed to parse notification WebSocket event",
-          error
-        );
-      }
+  presenceSubscription = stompClient.subscribe("/user/queue/presence", (frame: IMessage) => {
+    try {
+      callback(JSON.parse(frame.body) as ChatPresenceEvent)
+    } catch (error) {
+      console.error("Failed to parse presence WebSocket event", error)
     }
-  );
+  })
 
-  return notificationSubscription;
+  return presenceSubscription
+}
+
+export function unsubscribeFromPresence() {
+  presenceSubscription?.unsubscribe()
+  presenceSubscription = null
+}
+
+export function subscribeToNotifications(callback: (event: NotificationWebsocketResponse) => void): StompSubscription | null {
+  if (!stompClient.connected) {
+    return null
+  }
+
+  notificationSubscription?.unsubscribe()
+
+  notificationSubscription = stompClient.subscribe("/user/queue/notifications", (frame: IMessage) => {
+    try {
+      callback(JSON.parse(frame.body) as NotificationWebsocketResponse)
+    } catch (error) {
+      console.error("Failed to parse notification WebSocket event", error)
+    }
+  })
+
+  return notificationSubscription
 }
 
 export function unsubscribeFromNotifications() {
-  notificationSubscription?.unsubscribe();
-  notificationSubscription = null;
+  notificationSubscription?.unsubscribe()
+  notificationSubscription = null
 }

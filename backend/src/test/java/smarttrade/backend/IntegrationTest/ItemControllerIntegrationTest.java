@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.dto.item.CreateItemRequest;
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.ItemRepo;
 import smarttrade.backend.repository.UserRepo;

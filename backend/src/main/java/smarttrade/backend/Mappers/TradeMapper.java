@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.trade.*;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.TradeOfferRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
@@ -75,7 +75,6 @@ public class TradeMapper {
                 .mapToInt(ItemEntity::getUserPrice)
                 .sum();
 
-        int valueDifference = yourValue - theirValue;
 
         return TradeInboxResponse.builder()
                 .tradeId(trade.getTradeId())
@@ -84,7 +83,7 @@ public class TradeMapper {
                 .status(trade.getStatus().name())
                 .yourItemCount(yourItems.size())
                 .theirItemCount(theirItems.size())
-                .valueDifference(valueDifference)
+                .cashAdjustment(offer.getCashAdjustment())
                 .updatedAt(offer.getCreatedAt())
                 .latestOffer(mapFromEntity(offer))
                 .build();

@@ -1,4 +1,4 @@
-package smarttrade.backend.entities;
+package smarttrade.backend.entities.item;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.locationtech.jts.geom.Point;
+import smarttrade.backend.entities.UserEntity;
 
 
 import java.time.LocalDateTime;
@@ -41,18 +42,25 @@ public class ItemEntity {
     private UserEntity user;
 
     private String description;              // Item description
-    private String category;                 // Category (e.g., electronics, books)
-    private String condition;                // "new", "used - like new", "used - good", etc.
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ItemCategory category;                 // Category (e.g., electronics, books)
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ItemCondition condition;                // "new", "used - like new", "used - good", etc.
+
     @ElementCollection
     @CollectionTable(name = "item_labels", joinColumns = @JoinColumn(name = "item_id"))
     @Column(name = "label")
     private List<String> labels;             // Keywords, e.g., ["gaming", "intel", "DDR4"]
 
+    @Column(name = "custom_category")
+    private String customCategory;
+
     @ElementCollection
-    @CollectionTable(
-            name = "item_images",
-            joinColumns = @JoinColumn(name = "item_id")
-    )
+    @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
     @Column(name = "image_url")
     private List<String> imageUrls;
 

@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs"
+import SockJS from "sockjs-client"
 
-import { API_BASE_URL } from "@/lib/config";
+import { API_BASE_URL } from "@/lib/config"
 
-type ConnectionListener = () => void;
+type ConnectionListener = () => void
 
-const connectionListeners = new Set<ConnectionListener>();
+const connectionListeners = new Set<ConnectionListener>()
 
 export const stompClient = new Client({
   webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
@@ -15,30 +15,31 @@ export const stompClient = new Client({
   reconnectDelay: 5000,
 
   onConnect: () => {
-    console.log("WebSocket connected");
+    console.log("WebSocket connected")
 
     connectionListeners.forEach((listener) => {
-      listener();
-    });
+      listener()
+    })
   },
 
   onDisconnect: () => {
-    console.log("WebSocket disconnected");
+    console.log("WebSocket disconnected")
   },
 
   onStompError: (frame) => {
-    console.error("STOMP Error:", frame.headers["message"]);
+    console.error("STOMP Error:", frame.headers["message"])
   },
-});
+})
 
 export function onWebSocketConnected(listener: ConnectionListener): () => void {
-  connectionListeners.add(listener);
+  connectionListeners.add(listener)
 
   if (stompClient.connected) {
-    listener();
+    listener()
   }
 
   return () => {
-    connectionListeners.delete(listener);
-  };
+    connectionListeners.delete(listener)
+  }
 }
+

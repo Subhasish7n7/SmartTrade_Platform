@@ -5,7 +5,9 @@ import { getCurrentUser } from "@/lib/api/auth/auth.server"
 export async function redirectIfAuthenticated() {
   try {
     await getCurrentUser()
+  } catch {
+    return
+  }
 
-    redirect("/")
-  } catch {}
+  redirect("/")
 }

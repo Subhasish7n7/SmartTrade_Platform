@@ -28,23 +28,23 @@ export function TradeItemCard({ item, selected, disabled, requestedItem, onClick
       transition={{ duration: 0.15 }}
       className={cn(
         `
-    relative
-    overflow-hidden
-    rounded-xl
-    border
-    border-border/50
-    bg-card/60
-    backdrop-blur-xl
-    p-2.5
-    cursor-pointer
-    transition-all
-    `,
+        relative
+        overflow-hidden
+        rounded-xl
+        border
+        border-border/50
+        bg-card/60
+        backdrop-blur-xl
+        p-2.5
+        cursor-pointer
+        transition-all
+        `,
         selected &&
           `
-border-[var(--trust-blue)]
-bg-[var(--trust-blue)]/8
-shadow-[0_0_18px_rgba(59,130,246,.15)]
-`,
+        border-[var(--trust-blue)]
+        bg-[var(--trust-blue)]/8
+        shadow-[0_0_18px_rgba(59,130,246,.15)]
+        `,
         disabled && "opacity-50",
       )}
       onClick={onClick}

@@ -21,6 +21,7 @@ import smarttrade.backend.repository.TradeRepo;
 import smarttrade.backend.repository.UserRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
+import smarttrade.backend.websocket.ChatPresencePublisher;
 
 import java.util.Comparator;
 import java.util.List;
@@ -39,6 +40,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final ActiveConversationRegistry activeConversationRegistry;
     private final ChatMapper chatMapper;
+    private final ChatPresencePublisher presencePublisher;
 
     private ChatConversationEntity getOrCreateConversation(UserEntity user1, UserEntity user2) {
 
@@ -63,18 +65,42 @@ public class ChatService {
 
         UserEntity current = authenticatedUserService.getCurrentUser();
 
-        ChatConversationEntity conversation = conversationRepo.findById(conversationId)
+        ChatConversationEntity conversation =
+                conversationRepo.findById(conversationId)
                         .orElseThrow(() -> new IllegalArgumentException("Conversation not found"));
 
-        boolean participant = conversation.getUser1().getUserId().equals(current.getUserId())
+        boolean participant =
+                conversation.getUser1().getUserId()
+                        .equals(current.getUserId())
                         ||
-                        conversation.getUser2().getUserId().equals(current.getUserId());
+                        conversation.getUser2().getUserId()
+                                .equals(current.getUserId());
 
         if (!participant) {
-            throw new org.springframework.security.access.AccessDeniedException("Access denied");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Access denied"
+            );
         }
 
-        activeConversationRegistry.updatePresence(sessionId, current.getUserId(), conversationId);
+        boolean alreadyActive =
+                activeConversationRegistry.isViewingConversation(
+                        current.getUserId(),
+                        conversationId
+                );
+
+        activeConversationRegistry.updatePresence(
+                sessionId,
+                current.getUserId(),
+                conversationId
+        );
+
+        if (!alreadyActive) {
+            presencePublisher.publish(
+                    conversationId,
+                    current.getUserId(),
+                    true
+            );
+        }
     }
     public List<ChatConversationResponse> getInbox() {
 
@@ -89,18 +115,34 @@ public class ChatService {
                             .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
                                     .orElse(null);
 
-                    UserEntity otherUser = conversation.getUser1().getUserId().equals(currentUser.getUserId())
-                                            ? conversation.getUser2()
-                                            : conversation.getUser1();
+                    UserEntity otherUser = conversation.getUser1()
+                                    .getUserId()
+                                    .equals(currentUser.getUserId())
+                                    ?
+                                    conversation.getUser2()
+                                    :
+                                    conversation.getUser1();
 
-                    Integer activeTradeCount = tradeRepo.countActiveTradesBetweenUsers(
-                            currentUser.getUserId(), otherUser.getUserId());
+                    Integer activeTradeCount = tradeRepo
+                            .countActiveTradesBetweenUsers(currentUser.getUserId(), otherUser.getUserId());
+
+                    Integer unreadCount = getUnreadCount(conversation, currentUser);
 
                     return chatMapper.toConversationResponse(
-                            conversation, currentUser, lastMessage, activeTradeCount, 0);
+                            conversation,
+                            currentUser,
+                            lastMessage,
+                            activeTradeCount,
+                            unreadCount
+                    );
                 })
-                .sorted(Comparator.comparing(ChatConversationResponse::getLastMessageAt
-                        , Comparator.nullsLast(Comparator.reverseOrder()))
+                .sorted(
+                        Comparator.comparing(
+                                ChatConversationResponse::getLastMessageAt,
+                                Comparator.nullsLast(
+                                        Comparator.reverseOrder()
+                                )
+                        )
                 )
                 .toList();
     }
@@ -127,9 +169,10 @@ public class ChatService {
                 .countActiveTradesBetweenUsers(currentUser.getUserId(), otherUser.getUserId());
 
 
+        Integer receiverUnreadCount = getUnreadCount(conversation, otherUser);
         ChatConversationResponse receiverConversation =
                 chatMapper.toConversationResponse(
-                        conversation, otherUser, chatMessage, activeTradeCount, 0);
+                        conversation, otherUser, chatMessage, activeTradeCount, receiverUnreadCount);
 
         ChatConversationResponse senderConversation =
                 chatMapper.toConversationResponse(
@@ -232,6 +275,30 @@ public class ChatService {
         }
 
         conversationRepo.save(conversation);
+    }
+    private Integer getUnreadCount(ChatConversationEntity conversation, UserEntity currentUser) {
+
+        Long lastReadId = null;
+
+        if (conversation.getUser1().getUserId()
+                .equals(currentUser.getUserId())) {
+
+            if (conversation.getUser1LastReadMessage() != null) {
+                lastReadId = conversation.getUser1LastReadMessage().getId();
+            }
+
+        } else {
+
+            if (conversation.getUser2LastReadMessage() != null) {
+                lastReadId = conversation.getUser2LastReadMessage().getId();
+            }
+        }
+
+        return chatMessageRepo.countUnread(
+                conversation.getId(),
+                currentUser.getUserId(),
+                lastReadId
+        );
     }
     private ChatEvent createChatEvent(ChatMessageResponse message, ChatConversationResponse conversation){
         return ChatEvent.builder()

@@ -1,14 +1,14 @@
 package smarttrade.backend.Mappers;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.item.CreateItemRequest;
 import smarttrade.backend.dto.item.ItemResponse;
 import smarttrade.backend.dto.item.SellerSummaryDto;
 import smarttrade.backend.dto.item.UpdateItemRequest;
-import smarttrade.backend.entities.ItemEntity;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
+import smarttrade.backend.entities.item.ItemEntity;
 
 import java.time.LocalDateTime;
 
@@ -18,14 +18,16 @@ public class ItemMapper {
     private static final GeometryFactory geometryFactory =
             new GeometryFactory(new PrecisionModel(), 4326);
 
-
-
-
     public ItemResponse mapFrom(ItemEntity entity) {
-        if (entity == null) return null;
+
+        if (entity == null) {
+            return null;
+        }
 
         ItemResponse dto = new ItemResponse();
+
         SellerSummaryDto seller = new SellerSummaryDto();
+
         seller.setUserId(entity.getUser().getUserId());
         seller.setName(entity.getUser().getName());
         seller.setTrustScore(entity.getUser().getTrustScore());
@@ -33,20 +35,31 @@ public class ItemMapper {
         seller.setSuccessfulTrades(entity.getUser().getSuccessfulTrades());
 
         dto.setSeller(seller);
+
         dto.setItemId(entity.getItemId());
         dto.setItemName(entity.getItemName());
+
         dto.setNewPrice(entity.getNewPrice());
         dto.setUserPrice(entity.getUserPrice());
         dto.setGeneratedPrice(entity.getGeneratedPrice());
+
         dto.setImageUrls(entity.getImageUrls());
+
         dto.setCategory(entity.getCategory());
         dto.setCondition(entity.getCondition());
+        dto.setCustomCategory(entity.getCustomCategory());
+
         dto.setDescription(entity.getDescription());
         dto.setLabels(entity.getLabels());
 
         dto.setForSale(entity.isForSale());
         dto.setForTrade(entity.isForTrade());
         dto.setAvailable(entity.isAvailable());
+
+        dto.setCity(entity.getCity());
+        dto.setState(entity.getState());
+        dto.setLocality(entity.getLocality());
+
         dto.setCreatedAt(entity.getCreatedAt());
 
         if (entity.getLocation() != null) {
@@ -56,23 +69,34 @@ public class ItemMapper {
 
         return dto;
     }
+
     public ItemEntity fromCreateRequest(CreateItemRequest dto) {
 
-        if (dto == null) return null;
+        if (dto == null) {
+            return null;
+        }
 
         ItemEntity entity = new ItemEntity();
 
         entity.setItemName(dto.getItemName());
         entity.setUserPrice(dto.getUserPrice());
+
         entity.setImageUrls(dto.getImageUrls());
 
         entity.setCategory(dto.getCategory());
         entity.setCondition(dto.getCondition());
+        entity.setCustomCategory(dto.getCustomCategory());
+
         entity.setDescription(dto.getDescription());
         entity.setLabels(dto.getLabels());
 
         entity.setForSale(dto.isForSale());
         entity.setForTrade(dto.isForTrade());
+
+        entity.setCity(dto.getCity());
+        entity.setState(dto.getState());
+        entity.setLocality(dto.getLocality());
+
         entity.setCreatedAt(LocalDateTime.now());
 
         if (dto.getLatitude() != null && dto.getLongitude() != null) {
@@ -89,6 +113,7 @@ public class ItemMapper {
 
         return entity;
     }
+
     public void updateEntityFromRequest(
             UpdateItemRequest dto,
             ItemEntity entity
@@ -98,20 +123,8 @@ public class ItemMapper {
             entity.setItemName(dto.getItemName());
         }
 
-        if (dto.getNewPrice() != null) {
-            entity.setNewPrice(dto.getNewPrice());
-        }
-
         if (dto.getUserPrice() != null) {
             entity.setUserPrice(dto.getUserPrice());
-        }
-
-        if (dto.getGeneratedPrice() != null) {
-            entity.setGeneratedPrice(dto.getGeneratedPrice());
-        }
-
-        if(dto.getImageUrls() != null){
-            entity.setImageUrls(dto.getImageUrls());
         }
 
         if (dto.getCategory() != null) {
@@ -122,12 +135,20 @@ public class ItemMapper {
             entity.setCondition(dto.getCondition());
         }
 
+        if (dto.getCustomCategory() != null) {
+            entity.setCustomCategory(dto.getCustomCategory());
+        }
+
         if (dto.getDescription() != null) {
             entity.setDescription(dto.getDescription());
         }
 
         if (dto.getLabels() != null) {
             entity.setLabels(dto.getLabels());
+        }
+
+        if (dto.getImageUrls() != null) {
+            entity.setImageUrls(dto.getImageUrls());
         }
 
         if (dto.getForSale() != null) {

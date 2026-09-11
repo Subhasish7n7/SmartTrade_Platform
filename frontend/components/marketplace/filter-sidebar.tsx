@@ -1,72 +1,79 @@
 "use client"
 
-import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Filter, 
-  X, 
-  ChevronDown,
-  Laptop,
-  Gamepad2,
-  Camera,
-  Smartphone,
-  Headphones,
-  Bike,
-  Monitor,
-  Watch,
-  SlidersHorizontal
-} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import type { ItemCategory, ItemCondition, ItemSearchFilters, ListingType } from "@/lib/types/api/item"
 import { cn } from "@/lib/utils"
+import { AnimatePresence, motion } from "framer-motion"
+import {
+  Bike,
+  BookOpen,
+  Camera,
+  ChevronDown,
+  Filter,
+  Gamepad2,
+  Headphones,
+  Laptop,
+  Monitor,
+  Package,
+  SlidersHorizontal,
+  Smartphone,
+  Watch,
+  X,
+} from "lucide-react"
+import * as React from "react"
 
-const categories = [
-  { icon: Laptop, label: "Gaming Laptops", value: "laptops" },
-  { icon: Gamepad2, label: "Collectibles", value: "collectibles" },
-  { icon: Camera, label: "Cameras", value: "cameras" },
-  { icon: Smartphone, label: "Phones", value: "phones" },
-  { icon: Headphones, label: "Audio", value: "audio" },
-  { icon: Bike, label: "Bikes", value: "bikes" },
-  { icon: Monitor, label: "Monitors", value: "monitors" },
-  { icon: Watch, label: "Watches", value: "watches" },
+const categories: { icon: React.ElementType; label: string; value: ItemCategory }[] = [
+  { icon: Laptop, label: "Computers", value: "COMPUTERS" },
+  { icon: Gamepad2, label: "Gaming", value: "GAMING" },
+  { icon: Camera, label: "Cameras", value: "CAMERAS" },
+  { icon: Smartphone, label: "Phones", value: "PHONES" },
+  { icon: Headphones, label: "Audio", value: "AUDIO" },
+  { icon: Bike, label: "Bikes", value: "BIKES" },
+  { icon: Monitor, label: "Monitors", value: "MONITORS" },
+  { icon: Watch, label: "Watches", value: "WATCHES" },
+  { icon: Gamepad2, label: "Collectibles", value: "COLLECTIBLES" },
+  { icon: BookOpen, label: "Books", value: "BOOKS" },
+  { icon: Package, label: "Other", value: "OTHER" },
 ]
 
-const conditions = [
-  { label: "Factory New", value: "factory-new", color: "text-emerald-400" },
-  { label: "Minimal Wear", value: "minimal-wear", color: "text-teal-400" },
-  { label: "Field Tested", value: "field-tested", color: "text-amber-400" },
-  { label: "Well Worn", value: "well-worn", color: "text-orange-400" },
-  { label: "Battle Scarred", value: "battle-scarred", color: "text-red-400" },
+const conditions: { label: string; value: ItemCondition; color: string }[] = [
+  { label: "New", value: "NEW", color: "text-emerald-400" },
+  { label: "Like New", value: "LIKE_NEW", color: "text-teal-400" },
+  { label: "Good", value: "GOOD", color: "text-amber-400" },
+  { label: "Fair", value: "FAIR", color: "text-orange-400" },
+  { label: "Poor", value: "POOR", color: "text-red-400" },
 ]
 
 const listingTypes = [
-  { label: "All Listings", value: "all" },
-  { label: "For Sale", value: "sale" },
-  { label: "For Trade", value: "trade" },
-  { label: "Trade or Sale", value: "both" },
-]
+  { label: "All Listings", value: null },
+  { label: "For Sale", value: "SALE" },
+  { label: "For Trade", value: "TRADE" },
+  { label: "Both", value: "BOTH" },
+] as const
 
 const distances = [
-  { label: "5 miles", value: 5 },
-  { label: "10 miles", value: 10 },
-  { label: "25 miles", value: 25 },
-  { label: "50 miles", value: 50 },
-  { label: "100 miles", value: 100 },
-  { label: "Anywhere", value: -1 },
-]
+  { label: "5 km", value: 5 },
+  { label: "10 km", value: 10 },
+  { label: "25 km", value: 25 },
+  { label: "50 km", value: 50 },
+  { label: "100 km", value: 100 },
+  { label: "Anywhere", value: null },
+] as const
 
 interface FilterPanelProps {
   isOpen: boolean
   onClose: () => void
-  onApply?: () => void
+  filters: ItemSearchFilters
+  onApply: (filters: ItemSearchFilters) => void
 }
 
-export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null)
-  const [selectedConditions, setSelectedConditions] = React.useState<string[]>([])
-  const [selectedListingType, setSelectedListingType] = React.useState("all")
-  const [selectedDistance, setSelectedDistance] = React.useState(25)
-  const [priceRange, setPriceRange] = React.useState([0, 5000])
+export function FilterPanel({ isOpen, onClose, onApply, filters }: FilterPanelProps) {
+  const [selectedCategory, setSelectedCategory] = React.useState<ItemCategory | null>(filters.category ?? null)
+  const [selectedConditions, setSelectedConditions] = React.useState<ItemCondition[]>(filters.conditions ?? [])
+  const [selectedListingType, setSelectedListingType] = React.useState<ListingType | null>(filters.listingType ?? null)
+  const [selectedDistance, setSelectedDistance] = React.useState<number | null>(filters.radiusKm ?? 25)
+  const [priceRange, setPriceRange] = React.useState([filters.minPrice ?? 0, filters.maxPrice ?? 5000])
   const [expandedSections, setExpandedSections] = React.useState({
     category: true,
     condition: true,
@@ -74,36 +81,49 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
     distance: true,
     price: true,
   })
+  React.useEffect(() => {
+    setSelectedCategory(filters.category ?? null)
+    setSelectedConditions(filters.conditions ?? [])
+    setSelectedListingType(filters.listingType ?? null)
+    setSelectedDistance(filters.radiusKm ?? 25)
+    setPriceRange([filters.minPrice ?? 0, filters.maxPrice ?? 5000])
+  }, [filters])
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
-  const toggleCondition = (value: string) => {
-    setSelectedConditions(prev => 
-      prev.includes(value) 
-        ? prev.filter(c => c !== value)
-        : [...prev, value]
-    )
+  const toggleCondition = (value: ItemCondition) => {
+    setSelectedConditions((prev) => (prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]))
   }
 
   const clearFilters = () => {
     setSelectedCategory(null)
     setSelectedConditions([])
-    setSelectedListingType("all")
+    setSelectedListingType(null)
     setSelectedDistance(25)
     setPriceRange([0, 5000])
   }
 
-  const activeFiltersCount = 
-    (selectedCategory ? 1 : 0) + 
-    selectedConditions.length + 
-    (selectedListingType !== "all" ? 1 : 0) + 
+  const activeFiltersCount =
+    (selectedCategory ? 1 : 0) +
+    selectedConditions.length +
+    (selectedListingType ? 1 : 0) +
     (selectedDistance !== 25 ? 1 : 0) +
     (priceRange[0] !== 0 || priceRange[1] !== 5000 ? 1 : 0)
 
   const handleApply = () => {
-    onApply?.()
+    onApply({
+      ...filters,
+      category: selectedCategory ?? undefined,
+      conditions: selectedConditions.length ? selectedConditions : undefined,
+      listingType: selectedListingType ?? undefined,
+      radiusKm: selectedDistance ?? undefined,
+      minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+      maxPrice: priceRange[1] < 5000 ? priceRange[1] : undefined,
+      page: 0,
+    })
+
     onClose()
   }
 
@@ -120,7 +140,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
             onClick={onClose}
           />
-          
+
           {/* Panel */}
           <motion.div
             initial={{ x: "100%" }}
@@ -137,19 +157,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                 </div>
                 <div>
                   <h2 className="font-semibold text-foreground">Filters</h2>
-                  {activeFiltersCount > 0 && (
-                    <p className="text-xs text-muted-foreground">{activeFiltersCount} active</p>
-                  )}
+                  {activeFiltersCount > 0 && <p className="text-xs text-muted-foreground">{activeFiltersCount} active</p>}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {activeFiltersCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground hover:text-foreground">
                     Clear all
                   </Button>
                 )}
@@ -168,10 +181,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground"
                 >
                   Category
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                    expandedSections.category && "rotate-180"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      expandedSections.category && "rotate-180",
+                    )}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedSections.category && (
@@ -191,7 +206,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                               "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all",
                               selectedCategory === cat.value
                                 ? "bg-primary/20 text-primary border border-primary/30"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent",
                             )}
                           >
                             <cat.icon className="h-4 w-4" />
@@ -211,10 +226,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground"
                 >
                   Condition
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                    expandedSections.condition && "rotate-180"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      expandedSections.condition && "rotate-180",
+                    )}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedSections.condition && (
@@ -234,15 +251,15 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                               "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-all",
                               selectedConditions.includes(condition.value)
                                 ? "bg-muted/80 border border-border/80"
-                                : "hover:bg-muted/50 border border-transparent"
+                                : "hover:bg-muted/50 border border-transparent",
                             )}
                           >
-                            <div className={cn(
-                              "h-5 w-5 rounded border-2 flex items-center justify-center transition-colors",
-                              selectedConditions.includes(condition.value)
-                                ? "border-primary bg-primary"
-                                : "border-muted-foreground"
-                            )}>
+                            <div
+                              className={cn(
+                                "h-5 w-5 rounded border-2 flex items-center justify-center transition-colors",
+                                selectedConditions.includes(condition.value) ? "border-primary bg-primary" : "border-muted-foreground",
+                              )}
+                            >
                               {selectedConditions.includes(condition.value) && (
                                 <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -265,10 +282,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground"
                 >
                   Listing Type
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                    expandedSections.listingType && "rotate-180"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      expandedSections.listingType && "rotate-180",
+                    )}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedSections.listingType && (
@@ -288,7 +307,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                               "px-4 py-2 rounded-full text-sm font-medium transition-all",
                               selectedListingType === type.value
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
                           >
                             {type.label}
@@ -307,10 +326,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground"
                 >
                   Distance
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                    expandedSections.distance && "rotate-180"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      expandedSections.distance && "rotate-180",
+                    )}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedSections.distance && (
@@ -330,7 +351,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                               "px-4 py-2 rounded-full text-sm font-medium transition-all",
                               selectedDistance === dist.value
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
                           >
                             {dist.label}
@@ -349,10 +370,12 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground"
                 >
                   Price Range
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                    expandedSections.price && "rotate-180"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      expandedSections.price && "rotate-180",
+                    )}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedSections.price && (
@@ -364,13 +387,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
                       className="overflow-hidden"
                     >
                       <div className="space-y-4 pt-2">
-                        <Slider
-                          value={priceRange}
-                          onValueChange={setPriceRange}
-                          max={5000}
-                          step={50}
-                          className="w-full"
-                        />
+                        <Slider value={priceRange} onValueChange={setPriceRange} max={5000} step={50} className="w-full" />
                         <div className="flex items-center justify-between text-sm">
                           <span className="px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground font-medium">
                             ${priceRange[0].toLocaleString()}
@@ -389,7 +406,7 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
 
             {/* Footer */}
             <div className="p-4 border-t border-border bg-background">
-              <Button 
+              <Button
                 className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl"
                 onClick={handleApply}
               >
@@ -406,16 +423,8 @@ export function FilterPanel({ isOpen, onClose, onApply }: FilterPanelProps) {
 // Floating Filter Button - used across all screen sizes
 export function FloatingFilterButton({ onClick, activeCount }: { onClick: () => void; activeCount: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-6 right-6 z-40"
-    >
-      <Button
-        onClick={onClick}
-        size="lg"
-        className="cta-primary h-14 px-6 rounded-2xl font-medium"
-      >
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-6 right-6 z-40">
+      <Button onClick={onClick} size="lg" className="cta-primary h-14 px-6 rounded-2xl font-medium">
         <SlidersHorizontal className="h-5 w-5 mr-2" />
         Filters
         {activeCount > 0 && (

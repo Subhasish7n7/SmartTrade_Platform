@@ -1,6 +1,8 @@
 package smarttrade.backend.dto.item;
 
 import lombok.Data;
+import smarttrade.backend.entities.item.ItemCategory;
+import smarttrade.backend.entities.item.ItemCondition;
 
 import java.util.List;
 
@@ -8,12 +10,11 @@ import java.util.List;
 public class UpdateItemRequest {
 
     private String itemName;
-    private Integer newPrice;
-    private Integer generatedPrice;
     private Integer userPrice;
     private String description;
-    private String category;
-    private String condition;
+    private ItemCategory category;
+    private ItemCondition condition;
+    private String customCategory;
     private List<String> labels;
     private List<String> imageUrls;
     private Double latitude;

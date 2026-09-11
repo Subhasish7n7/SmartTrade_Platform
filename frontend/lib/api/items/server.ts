@@ -20,8 +20,4 @@ export async function getItemById(id: number) {
   return response.data
 }
 
-export async function createItem(request: CreateItemRequest) {
-  const api = await serverApi()
-  const response = await api.post("/items", request)
-  return response.data
-}
+

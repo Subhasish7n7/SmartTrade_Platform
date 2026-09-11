@@ -8,9 +8,31 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 @Component
 @RequiredArgsConstructor
 public class WebSocketDisconnectListener {
+
     private final ActiveConversationRegistry registry;
+    private final ChatPresencePublisher presencePublisher;
+
     @EventListener
     public void disconnect(SessionDisconnectEvent event) {
-        registry.disconnect(event.getSessionId());
+
+        ActiveConversationSession session = registry.disconnect(event.getSessionId());
+
+        if (session == null) {
+            return;
+        }
+
+        boolean stillActive =
+                registry.isUserActiveInConversation(
+                        session.getUserId(),
+                        session.getConversationId()
+                );
+
+        if (!stillActive) {
+            presencePublisher.publish(
+                    session.getConversationId(),
+                    session.getUserId(),
+                    false
+            );
+        }
     }
 }

@@ -22,9 +22,9 @@ public interface TradeRepo extends JpaRepository<TradeEntity, Long> {
             AND t.receiver.userId = :user1)
     )
     AND t.status IN (
-        smarttrade.backend.entities.TradeStatus.OPEN,
-        smarttrade.backend.entities.TradeStatus.NEGOTIATING,
-        smarttrade.backend.entities.TradeStatus.ACCEPTED
+        smarttrade.backend.entities.trade.TradeStatus.OPEN,
+        smarttrade.backend.entities.trade.TradeStatus.NEGOTIATING,
+        smarttrade.backend.entities.trade.TradeStatus.ACCEPTED
     )
     """)
     Integer countActiveTradesBetweenUsers(Long user1, Long user2);
@@ -47,9 +47,9 @@ public interface TradeRepo extends JpaRepository<TradeEntity, Long> {
     ON o.trade.tradeId = t.tradeId
     WHERE
     (
-        t.status = smarttrade.backend.entities.TradeStatus.OPEN
+        t.status = smarttrade.backend.entities.trade.TradeStatus.OPEN
         OR
-        t.status = smarttrade.backend.entities.TradeStatus.NEGOTIATING
+        t.status = smarttrade.backend.entities.trade.TradeStatus.NEGOTIATING
     )
     AND o.createdAt = (
     

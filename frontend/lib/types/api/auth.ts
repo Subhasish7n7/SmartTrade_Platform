@@ -19,4 +19,5 @@ export interface CurrentUser {
   name: string
   email: string
   phoneNo?: string
+  avatarUrl:string
 }

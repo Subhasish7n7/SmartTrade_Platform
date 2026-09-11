@@ -8,7 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import smarttrade.backend.Mappers.ItemMapper;
 import smarttrade.backend.dto.item.UpdateItemRequest;
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.exceptions.ForbiddenOperationException;
 import smarttrade.backend.repository.ItemRepo;

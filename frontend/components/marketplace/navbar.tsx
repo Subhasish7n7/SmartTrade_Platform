@@ -2,13 +2,28 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { logout } from "@/lib/api/auth/auth.client"
+import { stompClient } from "@/lib/api/configs/websocket"
+import { useAuth } from "@/lib/providers/auth-provider"
+import { useNotifications } from "@/lib/providers/notification-provider"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeftRight, Bell, ChevronDown, Heart, Menu, MessageCircle, Search, X } from "lucide-react"
+import { ArrowLeftRight, Bell, ChevronDown, Heart, LogOut, Menu, MessageCircle, Package, Search, Settings, User, X } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import * as React from "react"
+import { toast } from "sonner"
+import { Notification } from "./notification"
 
 interface NavbarProps {
   className?: string
@@ -18,6 +33,10 @@ export function Navbar({ className }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false)
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
+  const router = useRouter()
+  const { user, setUser } = useAuth()
+
+  const { unreadCount: notificationCount, tradeAlertCount, chatAlertCount, markModuleNotificationsRead } = useNotifications()
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -27,16 +46,31 @@ export function Navbar({ className }: NavbarProps) {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  const handleLogout = async () => {
+    try {
+      // Stop the authenticated WebSocket session first.
+      await stompClient.deactivate()
+
+      // Clear the HttpOnly JWT cookie on the backend.
+      await logout()
+
+      // Remove the authenticated user from application state.
+      setUser(null)
+
+      router.replace("/login")
+      router.refresh()
+    } catch (error) {
+      console.error("Logout failed", error)
+
+      toast.error("Failed to log out")
+    }
+  }
   const navItems = [
-    { label: "Marketplace", href: "/marketplace" },
+    { label: "Marketplace", href: "/" },
     { label: "My Inventory", href: "/inventory" },
     { label: "Trades", href: "/trades" },
     { label: "Community", href: "/community" },
   ]
-
-  const notificationCount = 3
-  const tradeOffersCount = 2
-  const messagesCount = 5
 
   return (
     <motion.nav
@@ -55,7 +89,7 @@ export function Navbar({ className }: NavbarProps) {
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-lg"
               className="lg:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -68,7 +102,7 @@ export function Navbar({ className }: NavbarProps) {
                     exit={{ rotate: 90, opacity: 0 }}
                     transition={{ duration: 0.15 }}
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-[21px] w-[21px]" />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -78,7 +112,7 @@ export function Navbar({ className }: NavbarProps) {
                     exit={{ rotate: -90, opacity: 0 }}
                     transition={{ duration: 0.15 }}
                   >
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-[21px] w-[21px]" />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -110,9 +144,6 @@ export function Navbar({ className }: NavbarProps) {
                   {item.label}
                 </Link>
               ))}
-              <Button variant="outline" onClick={logout}>
-                log out
-              </Button>
             </div>
           </div>
 
@@ -133,65 +164,196 @@ export function Navbar({ className }: NavbarProps) {
             {/* Mobile Search Toggle */}
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-lg"
               className="md:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-[21px] w-[21px]" />
               <span className="sr-only">Search</span>
             </Button>
 
             {/* Wishlist */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-foreground relative">
-              <Heart className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              className="icon-glow icon-glow-violet hidden sm:flex relative
+             hover:bg-transparent dark:hover:bg-transparent"
+            >
+              <Heart className="h-[21px] w-[21px]" />
               <span className="sr-only">Wishlist</span>
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-[10px] font-bold flex items-center justify-center text-primary-foreground">
-                  {notificationCount}
-                </span>
-              )}
-              <span className="sr-only">Notifications</span>
-            </Button>
+            <Notification />
 
-            {/* Trade Offers */}
-            <Link href="/trades">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
-                <ArrowLeftRight className="h-5 w-5" />
+            {/* Trades */}
+            <Link
+              href="/trades"
+              onClick={() => {
+                void markModuleNotificationsRead("TRADE")
+              }}
+            >
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="icon-glow icon-glow-gold relative
+               hover:bg-transparent dark:hover:bg-transparent"
+              >
+                <ArrowLeftRight className="h-[21px] w-[21px]" />
 
-                {tradeOffersCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-warning text-[10px] font-bold flex items-center justify-center text-warning-foreground">
-                    {tradeOffersCount}
-                  </span>
+                {tradeAlertCount > 0 && (
+                  <span className="nav-count nav-count-warning">{tradeAlertCount > 99 ? "99+" : tradeAlertCount}</span>
                 )}
+
+                <span className="sr-only">Trade offers</span>
               </Button>
             </Link>
 
             {/* Messages */}
-            <Link href={"/messages"}>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
-                <MessageCircle className="h-5 w-5" />
-                {messagesCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-info text-[10px] font-bold flex items-center justify-center text-info-foreground">
-                    {messagesCount}
-                  </span>
-                )}
+            <Link
+              href="/messages"
+              onClick={() => {
+                void markModuleNotificationsRead("CHAT_CONVERSATION")
+              }}
+            >
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="icon-glow icon-glow-blue relative
+               hover:bg-transparent dark:hover:bg-transparent"
+              >
+                <MessageCircle className="h-[21px] w-[21px]" />
+
+                {chatAlertCount > 0 && <span className="nav-count nav-count-info">{chatAlertCount > 99 ? "99+" : chatAlertCount}</span>}
+
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
+            {/* Profile / Account Menu */}
+            {user ? (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="hidden sm:flex items-center gap-2 px-1.5
+             hover:bg-transparent
+             dark:hover:bg-transparent
+             hover:text-inherit
+             dark:hover:text-inherit"
+                  >
+                    <Avatar className="profile-avatar h-8 w-8">
+                      <AvatarImage src={user.avatarUrl} />
+                      <AvatarFallback className="bg-muted text-muted-foreground">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
 
-            {/* Profile */}
-            <Button variant="ghost" className="hidden sm:flex items-center gap-2 px-2 hover:bg-muted/50">
-              <Avatar className="h-8 w-8 ring-2 ring-primary/30">
-                <AvatarImage src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face" />
-                <AvatarFallback className="bg-muted text-muted-foreground">JD</AvatarFallback>
-              </Avatar>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            </Button>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end" sideOffset={10} className="w-64 glass-strong border-border/60 p-2">
+                  <DropdownMenuLabel className="px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.avatarUrl} />
+                        <AvatarFallback className="bg-muted">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{user.name}</p>
+
+                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/inventory" className="cursor-pointer">
+                        <Package className="mr-2 h-4 w-4" />
+                        My Inventory
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link
+                        href="/trades"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          void markModuleNotificationsRead("TRADE")
+                        }}
+                      >
+                        <ArrowLeftRight className="mr-2 h-4 w-4" />
+                        My Trades
+                        {tradeAlertCount > 0 && <span className="ml-auto text-xs text-warning">{tradeAlertCount}</span>}
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/wishlist" className="cursor-pointer">
+                        <Heart className="mr-2 h-4 w-4" />
+                        Wishlist
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/notifications" className="cursor-pointer">
+                        <Bell className="mr-2 h-4 w-4" />
+                        Notifications
+                        {notificationCount > 0 && <span className="ml-auto text-xs text-primary">{notificationCount}</span>}
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link
+                        href="/messages"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          void markModuleNotificationsRead("CHAT_CONVERSATION")
+                        }}
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Messages
+                        {chatAlertCount > 0 && <span className="ml-auto text-xs text-info">{chatAlertCount}</span>}
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem asChild className="premium-menu-item">
+                    <Link href="/settings">
+                      <Settings className="mr-2.5 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    onClick={() => void handleLogout()}
+                    className="premium-menu-item cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2.5 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button variant="trade">Login</Button>
+              </Link>
+            )}
 
             {/* Mobile Profile */}
             <Avatar className="h-8 w-8 sm:hidden ring-2 ring-primary/30">

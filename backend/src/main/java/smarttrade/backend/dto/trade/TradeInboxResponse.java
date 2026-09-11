@@ -15,7 +15,7 @@ public class TradeInboxResponse {
     private String status;
     private Integer yourItemCount;
     private Integer theirItemCount;
-    private Integer valueDifference;
+    private Double cashAdjustment;
     private LocalDateTime updatedAt;
     private TradeOfferResponse latestOffer;
 }

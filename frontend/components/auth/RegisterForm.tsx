@@ -21,9 +21,11 @@ import { PasswordInput } from "./PasswordInput"
 import { register } from "@/lib/api/auth/auth.client"
 import { registerSchema, RegisterSchema } from "@/lib/validation/auth"
 import { toast } from "sonner"
+import { useAuth } from "@/lib/providers/auth-provider"
 
 export function RegisterForm() {
   const router = useRouter()
+  const { refreshUser } = useAuth()
 
   const form = useForm<RegisterSchema>({
     resolver: zodResolver(registerSchema),
@@ -49,6 +51,7 @@ export function RegisterForm() {
         password: values.password,
         phone_no: values.phone_no,
       })
+      await refreshUser()
 
       toast.success("Account created successfully")
 

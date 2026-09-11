@@ -15,8 +15,7 @@ public class AuthenticatedUserService {
 
     public UserEntity getCurrentUser() {
 
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Unauthenticated user");

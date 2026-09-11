@@ -15,48 +15,23 @@ import java.util.Date;
 public class JwtService {
 
     private final Key key;
-    /*
-     Convert secret string into cryptographic signing key.
-    */
 
- public JwtService(@Value("${jwt.secret}") String secret) {
-     this.key = Keys.hmacShaKeyFor(
-             secret.getBytes(StandardCharsets.UTF_8)
-     );
- }
+    public JwtService(@Value("${jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(
+                secret.getBytes(StandardCharsets.UTF_8)
+        );
+    }
 
-
- /*
-     Generate JWT token.
-
-     Subject = user's email.
-
-     Token contains:
-     - subject
-     - issue time
-     - expiration
-     - signature
- */
     public String generateToken(String email) {
-
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /*
-        Extract all claims from token.
-
-        Claims contain:
-        - subject
-        - expiration
-        - timestamps
-    */
-    private Claims extractClaims(String token) {
-
+    public Claims parseAndValidate(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
@@ -64,31 +39,4 @@ public class JwtService {
                 .getBody();
     }
 
-    /*
-        Extract email from token.
-    */
-    public String extractEmail(String token) {
-        return extractClaims(token).getSubject();
-    }
-
-    /*
-        Validate token against user.
-
-        Checks:
-        - same email
-        - token not expired
-    */
-    public boolean isTokenValid(String token, String email) {
-
-        String extractedEmail = extractEmail(token);
-
-        return extractedEmail.equals(email)
-                && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractClaims(token)
-                .getExpiration()
-                .before(new Date());
-    }
 }

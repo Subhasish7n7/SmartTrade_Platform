@@ -1,6 +1,6 @@
 package smarttrade.backend.TestDataUtil;
 
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.UserEntity;
 
 import java.util.ArrayList;

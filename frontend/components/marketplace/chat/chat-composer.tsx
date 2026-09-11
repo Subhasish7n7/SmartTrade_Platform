@@ -2,31 +2,20 @@
 
 import * as React from "react"
 
-import {
-  Send,
-  ImagePlus,
-  Paperclip,
-  Smile,
-} from "lucide-react"
+import { ImagePlus, Paperclip, Send, Smile } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface Props {
-  onSend: (
-    content: string
-  ) => void
+  onSend: (content: string) => void
 }
 
-export function ChatComposer({
-  onSend,
-}: Props) {
-  const [message, setMessage] =
-    React.useState("")
+export function ChatComposer({ onSend }: Props) {
+  const [message, setMessage] = React.useState("")
 
   const send = () => {
-    const trimmed =
-      message.trim()
+    const trimmed = message.trim()
 
     if (!trimmed) return
 
@@ -46,36 +35,20 @@ export function ChatComposer({
       "
     >
       <div className="flex items-center gap-2">
-
-        <Button
-          size="icon"
-          variant="ghost"
-          className="shrink-0"
-        >
+        <Button size="icon" variant="ghost" className="shrink-0">
           <ImagePlus className="h-5 w-5" />
         </Button>
 
-        <Button
-          size="icon"
-          variant="ghost"
-          className="shrink-0"
-        >
+        <Button size="icon" variant="ghost" className="shrink-0">
           <Paperclip className="h-5 w-5" />
         </Button>
 
         <Input
           value={message}
-          onChange={(e) =>
-            setMessage(
-              e.target.value
-            )
-          }
+          onChange={(e) => setMessage(e.target.value)}
           placeholder="Message..."
           onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey
-            ) {
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault()
               send()
             }
@@ -86,11 +59,7 @@ export function ChatComposer({
           "
         />
 
-        <Button
-          size="icon"
-          variant="ghost"
-          className="hidden sm:flex"
-        >
+        <Button size="icon" variant="ghost" className="hidden sm:flex">
           <Smile className="h-5 w-5" />
         </Button>
 
@@ -106,7 +75,6 @@ export function ChatComposer({
         >
           <Send className="h-4 w-4" />
         </Button>
-
       </div>
     </div>
   )

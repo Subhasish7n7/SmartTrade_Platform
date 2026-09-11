@@ -1,4 +1,4 @@
-package smarttrade.backend.dto;
+package smarttrade.backend.dto.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

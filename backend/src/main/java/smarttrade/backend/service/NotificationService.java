@@ -7,6 +7,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import smarttrade.backend.Mappers.NotificationMapper;
+import smarttrade.backend.dto.notification.NotificationCountResponse;
 import smarttrade.backend.dto.notification.NotificationResponse;
 import smarttrade.backend.dto.notification.NotificationWebsocketResponse;
 import smarttrade.backend.entities.UserEntity;
@@ -48,6 +49,24 @@ public class NotificationService {
                 )
                 .map(notificationMapper::map);
     }
+    public NotificationCountResponse getNotificationCounts() {
+
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+
+        Long userId = currentUser.getUserId();
+
+        return NotificationCountResponse.builder()
+                .unreadCount(
+                        notificationRepo.countByRecipient_UserIdAndIsReadFalse(userId)
+                )
+                .tradeAlertCount(
+                        notificationRepo.countUnreadByResourceType(userId, NotificationResourceType.TRADE)
+                )
+                .chatAlertCount(
+                        notificationRepo.countUnreadByResourceType(userId, NotificationResourceType.CHAT_CONVERSATION)
+                )
+                .build();
+    }
 
     public Long getUnreadCount() {
 
@@ -61,6 +80,16 @@ public class NotificationService {
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
         notificationRepo.markRead(id, currentUser.getUserId());
+    }
+    public void markModuleRead(NotificationResourceType resourceType) {
+
+        UserEntity currentUser =
+                authenticatedUserService.getCurrentUser();
+
+        notificationRepo.markModuleRead(
+                currentUser.getUserId(),
+                resourceType
+        );
     }
     public void delete(Long id) {
 
@@ -245,10 +274,24 @@ public class NotificationService {
 
         Long unread = notificationRepo.countByRecipient_UserIdAndIsReadFalse(recipient.getUserId());
 
+        Long tradeAlertCount =
+                notificationRepo.countUnreadByResourceType(
+                        recipient.getUserId(),
+                        NotificationResourceType.TRADE
+                );
+
+        Long chatAlertCount =
+                notificationRepo.countUnreadByResourceType(
+                        recipient.getUserId(),
+                        NotificationResourceType.CHAT_CONVERSATION
+                );
+
         NotificationWebsocketResponse websocket =
                 NotificationWebsocketResponse.builder()
                         .notification(dto)
                         .unreadCount(unread)
+                        .tradeAlertCount(tradeAlertCount)
+                        .chatAlertCount(chatAlertCount)
                         .build();
 
         messagingTemplate.convertAndSendToUser(

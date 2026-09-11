@@ -15,7 +15,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import smarttrade.backend.dto.UserDto;
+import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.entities.UserEntity;
 import smarttrade.backend.repository.UserRepo;
 import smarttrade.backend.security.JwtService;

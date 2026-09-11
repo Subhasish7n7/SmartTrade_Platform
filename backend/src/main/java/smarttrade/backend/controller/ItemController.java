@@ -1,11 +1,11 @@
 package smarttrade.backend.controller;
 
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import smarttrade.backend.Mappers.ItemMapper;
-import smarttrade.backend.dto.item.CreateItemRequest;
-import smarttrade.backend.dto.item.ItemResponse;
-import smarttrade.backend.dto.item.UpdateItemRequest;
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.dto.item.*;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.service.ItemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +45,7 @@ public class ItemController {
     }
 
     @PostMapping("/items")
-    public ResponseEntity<ItemResponse> addItem(@RequestBody CreateItemRequest request) {
+    public ResponseEntity<ItemResponse> addItem(@Valid @RequestBody CreateItemRequest request) {
         ItemEntity itemEntity = itemMapper.fromCreateRequest(request);
         ItemResponse itemResponse = itemMapper.mapFrom(itemService.addItems(itemEntity));
         return new ResponseEntity<>(itemResponse, HttpStatus.CREATED);
@@ -65,26 +65,13 @@ public class ItemController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @GetMapping("/items/nearby")
-    public ResponseEntity<List<ItemResponse>> getNearbyItems(
-            @RequestParam double lat,
-            @RequestParam double lng,
-            @RequestParam(defaultValue = "10") double radiusKm
-    ) {
-        List<ItemResponse> items = itemService.getNearbyItems(lat, lng, radiusKm)
-                .stream().map(itemMapper::mapFrom).toList();
-        return ResponseEntity.ok(items);
-    }
-
-    @GetMapping("/items/search")
-    public ResponseEntity<List<ItemResponse>> searchItems(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) List<String> labels,
-            @RequestParam(required = false) String name
-    ) {
-        List<ItemResponse> items = itemService.searchItems(category, labels, name)
-                .stream().map(itemMapper::mapFrom).toList();
-        return ResponseEntity.ok(items);
+    @PostMapping("/items/search")
+    public ResponseEntity<ItemSearchResponse> searchItems(@RequestBody ItemSearchRequest request
+    , HttpServletRequest httpRequest) {
+        System.out.println("SEARCH HIT");
+        System.out.println("CSRF HEADER = "
+                + httpRequest.getHeader("X-XSRF-TOKEN"));
+        return ResponseEntity.ok(itemService.searchItems(request));
     }
 
     @PatchMapping("/items/{itemId}/availability")

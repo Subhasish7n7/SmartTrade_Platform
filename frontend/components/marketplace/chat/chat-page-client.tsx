@@ -2,16 +2,20 @@
 
 import * as React from "react"
 
-import { getInbox, getMessages, sendChatMessage } from "@/lib/api/chats/chat"
+import { getInbox, getMessages, sendChatMessage, sendPresence } from "@/lib/api/chats/chat"
 import { onWebSocketConnected } from "@/lib/api/configs/websocket"
-import { subscribeToChat, unsubscribeFromChat } from "@/lib/api/configs/websocketSubscriptions"
+import {
+  subscribeToChat,
+  subscribeToPresence,
+  unsubscribeFromChat,
+  unsubscribeFromPresence,
+} from "@/lib/api/configs/websocketSubscriptions"
 import { ChatConversationResponse, ChatMessageResponse } from "@/lib/types/api/chat"
 import { ChatComposer } from "./chat-composer"
 import { ChatHeader } from "./chat-header"
 import { ChatSidebar } from "./chat-sidebar"
 import { MessageBubble } from "./message-bubble"
 import { PinnedTradeCard } from "./pinned-trade-card"
-
 
 interface Props {
   currentUserId: number
@@ -22,8 +26,11 @@ export function ChatPageClient({ currentUserId }: Props) {
   const [mobileConversationOpen, setMobileConversationOpen] = React.useState(false)
   const [selectedConversation, setSelectedConversation] = React.useState<ChatConversationResponse | null>(null)
   const [messages, setMessages] = React.useState<ChatMessageResponse[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [inboxLoading, setInboxLoading] = React.useState(true)
+  const [messagesLoading, setMessagesLoading] = React.useState(false)
   const selectedConversationRef = React.useRef<ChatConversationResponse | null>(null)
+  const [otherUserOnline, setOtherUserOnline] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     selectedConversationRef.current = selectedConversation
@@ -33,15 +40,24 @@ export function ChatPageClient({ currentUserId }: Props) {
 
   React.useEffect(() => {
     const loadInbox = async () => {
+      setInboxLoading(true)
+      setError(null)
+
       try {
         const data = await getInbox()
         setConversations(data)
+
         if (data.length > 0) {
           setSelectedConversation(data[0])
+        } else {
+          setSelectedConversation(null)
         }
       } catch {
-        setConversations(mockConversations)
-        setSelectedConversation(mockConversations[0])
+        setConversations([])
+        setSelectedConversation(null)
+        setError("Unable to load conversations.")
+      } finally {
+        setInboxLoading(false)
       }
     }
     loadInbox()
@@ -49,16 +65,19 @@ export function ChatPageClient({ currentUserId }: Props) {
 
   React.useEffect(() => {
     if (!selectedConversation) {
+      setMessages([])
+      setMessagesLoading(false)
       return
     }
     const loadMessages = async () => {
+      setMessagesLoading(true)
       try {
         const data = await getMessages(selectedConversation.otherUserId)
         setMessages([...data.content].reverse())
       } catch {
-        setMessages(mockMessages)
+        setMessages([])
       } finally {
-        setLoading(false)
+        setMessagesLoading(false)
       }
     }
     loadMessages()
@@ -67,33 +86,69 @@ export function ChatPageClient({ currentUserId }: Props) {
   React.useEffect(() => {
     const unsubscribeConnection = onWebSocketConnected(() => {
       subscribeToChat((event) => {
-        setConversations((prev) => {
-          const existingIndex = prev.findIndex((conversation) => conversation.otherUserId === event.conversation.otherUserId)
+        setConversations((previous) => {
+          const existingIndex = previous.findIndex((conversation) => conversation.conversationId === event.conversation.conversationId)
 
           if (existingIndex === -1) {
-            return [event.conversation, ...prev]
+            return [event.conversation, ...previous]
           }
 
-          const updated = [...prev]
+          const updated = [...previous]
+          updated.splice(existingIndex, 1)
 
-          updated[existingIndex] = event.conversation
-
-          const [conversation] = updated.splice(existingIndex, 1)
-
-          return [conversation, ...updated]
+          return [event.conversation, ...updated]
         })
 
-        if (selectedConversationRef.current?.otherUserId === event.conversation.otherUserId) {
-          setMessages((prev) => [...prev, event.message])
+        const selected = selectedConversationRef.current
+
+        if (selected?.conversationId === event.conversation.conversationId) {
+          setMessages((previous) => [...previous, event.message])
         }
       })
     })
-
     return () => {
       unsubscribeConnection()
       unsubscribeFromChat()
     }
   }, [])
+  React.useEffect(() => {
+    const unsubscribeConnection = onWebSocketConnected(() => {
+      subscribeToPresence((event) => {
+        const selected = selectedConversationRef.current
+
+        if (selected?.conversationId !== event.conversationId) {
+          return
+        }
+
+        if (selected.otherUserId !== event.userId) {
+          return
+        }
+
+        setOtherUserOnline(event.online)
+      })
+    })
+
+    return () => {
+      unsubscribeConnection()
+      unsubscribeFromPresence()
+    }
+  }, [])
+  React.useEffect(() => {
+    if (!selectedConversation) {
+      setOtherUserOnline(false)
+      return
+    }
+
+    setOtherUserOnline(false)
+
+    const unsubscribeConnection = onWebSocketConnected(() => {
+      sendPresence(selectedConversation.conversationId)
+    })
+
+    return () => {
+      unsubscribeConnection()
+    }
+  }, [selectedConversation])
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -103,7 +158,9 @@ export function ChatPageClient({ currentUserId }: Props) {
 
   const handleSend = async (content: string) => {
     if (!selectedConversation) return
-    sendChatMessage(selectedConversation.otherUserId, content)
+    sendChatMessage({
+      otherUserId:selectedConversation.otherUserId,
+       message:content})
   }
 
   return (
@@ -137,15 +194,22 @@ export function ChatPageClient({ currentUserId }: Props) {
           </div>
 
           <div className="flex-1 overflow-hidden p-3">
-            <ChatSidebar
-              conversations={conversations}
-              selectedUserId={selectedConversation?.otherUserId}
-              onSelect={(conversation) => {
-                setSelectedConversation(conversation)
-
-                setMobileConversationOpen(true)
-              }}
-            />
+            {inboxLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="h-20 rounded-2xl animate-pulse bg-card" />
+                ))}
+              </div>
+            ) : (
+              <ChatSidebar
+                conversations={conversations}
+                selectedUserId={selectedConversation?.otherUserId}
+                onSelect={(conversation) => {
+                  setSelectedConversation(conversation)
+                  setMobileConversationOpen(true)
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -164,6 +228,7 @@ export function ChatPageClient({ currentUserId }: Props) {
             <>
               <ChatHeader
                 conversation={selectedConversation}
+                online={otherUserOnline}
                 showConversationBack
                 onConversationBack={() => setMobileConversationOpen(false)}
               />
@@ -179,7 +244,7 @@ export function ChatPageClient({ currentUserId }: Props) {
                   chat-message-surface
                 "
               >
-                {loading ? (
+                {messagesLoading ? (
                   <div className="space-y-4">
                     {Array.from({
                       length: 6,

@@ -7,25 +7,31 @@ import { Input } from "@/components/ui/input"
 import { createTradeOffer } from "@/lib/api/trades/client"
 import { TradeItemResponse } from "@/lib/types/api/trade"
 import { AnimatePresence, motion } from "framer-motion"
-import { Eye, Minus, Plus } from "lucide-react"
+import { Eye, Minus, Plus, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import * as React from "react"
 import { TradeFairnessCard } from "./trade-fairness-card"
 import { TradeItemCard } from "./trade-item-card"
-import { useRouter } from "next/navigation"
 
 interface Props {
   receiverId: number
-  selectedItemId: number
+  selectedItemId?: number
+  tradeId?: number
+  isCounterOffer: boolean
   myItems: TradeItemResponse[]
   theirItems: TradeItemResponse[]
 }
 
-export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirItems }: Props) {
+export function TradeBuilderClient({ receiverId, selectedItemId, tradeId, isCounterOffer, myItems, theirItems }: Props) {
   const [selectedMine, setSelectedMine] = React.useState<number[]>([])
-  const [selectedTheirs, setSelectedTheirs] = React.useState<number[]>([selectedItemId])
+
+  const [selectedTheirs, setSelectedTheirs] = React.useState<number[]>(selectedItemId !== undefined ? [selectedItemId] : [])
+
   const [cashAdjustment, setCashAdjustment] = React.useState(0)
   const [submitting, setSubmitting] = React.useState(false)
+
+  const router = useRouter()
 
   function toggleMine(item: TradeItemResponse) {
     setSelectedMine((prev) => (prev.includes(item.itemId) ? prev.filter((id) => id !== item.itemId) : [...prev, item.itemId]))
@@ -45,14 +51,14 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
     ...theirItems.filter((item) => !selectedTheirs.includes(item.itemId)),
   ]
 
-  const myValue = myItems.filter((item) => selectedMine.includes(item.itemId)).reduce((sum, item) => sum + item.userPrice, 0)
+  const myValue =
+    myItems.filter((item) => selectedMine.includes(item.itemId)).reduce((sum, item) => sum + item.userPrice, 0) + cashAdjustment
 
-  const theirValue = theirItems.filter((item) => selectedTheirs.includes(item.itemId)).reduce((sum, item) => sum + item.userPrice, 0) + cashAdjustment
+  const theirValue = theirItems.filter((item) => selectedTheirs.includes(item.itemId)).reduce((sum, item) => sum + item.userPrice, 0)
 
   const difference = Math.abs(myValue - theirValue)
 
   const youReceiveMore = theirValue > myValue
-  const router = useRouter()
 
   async function handleCreateTradeOffer() {
     if (selectedMine.length === 0) {
@@ -70,27 +76,28 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
 
       const trade = await createTradeOffer({
         receiverId,
+        tradeId,
         senderItemIds: selectedMine,
         receiverItemIds: selectedTheirs,
         cashAdjustment,
       })
 
-      console.log("Trade created", trade)
-      router.push(`/trades`)
+      console.log(isCounterOffer ? "Counter offer created" : "Trade offer created", trade)
 
+      router.push(`/trades`)
     } catch (error) {
       console.error(error)
 
-      alert("Failed to create trade offer.")
+      alert(isCounterOffer ? "Failed to create counter offer." : "Failed to create trade offer.")
     } finally {
       setSubmitting(false)
     }
   }
+
   return (
     <main className="pt-20 pb-24">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <AnimatedPage>
-          {/* Compact Workspace Header */}
           <Section>
             <div className="grid grid-cols-3 items-center mb-4">
               <div className="flex items-center gap-5">
@@ -98,16 +105,34 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
               </div>
 
               <div className="justify-self-center">
-                <h1 className="text-2xl  font-bold bg-gradient-to-r from-[var(--trust-blue)] via-[var(--negotiation-violet)] to-[var(--premium-gold)] bg-clip-text text-transparent">
-                  Create Trade Offer
-                </h1>
+                <div className="flex items-center gap-2">
+                  {isCounterOffer && <RefreshCw className="h-5 w-5 text-[var(--negotiation-violet)]" />}
+
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-[var(--trust-blue)] via-[var(--negotiation-violet)] to-[var(--premium-gold)] bg-clip-text text-transparent">
+                    {isCounterOffer ? "Counter Offer" : "Create Trade Offer"}
+                  </h1>
+                </div>
               </div>
+
               <div className="justify-self-end">
                 <Button onClick={handleCreateTradeOffer} disabled={submitting} className="cta-primary h-11 w-full rounded-xl font-semibold">
-                  {submitting ? "Creating..." : "Create Trade Offer"}
+                  {submitting
+                    ? isCounterOffer
+                      ? "Countering..."
+                      : "Creating..."
+                    : isCounterOffer
+                      ? "Send Counter Offer"
+                      : "Create Trade Offer"}
                 </Button>
               </div>
             </div>
+
+            {isCounterOffer && (
+              <div className="mb-4 rounded-xl border border-[var(--negotiation-violet)]/30 bg-[var(--negotiation-violet)]/5 px-4 py-3">
+                <p className="text-sm font-medium">You are making a counter offer</p>
+                <p className="text-xs text-muted-foreground mt-1">Adjust the items and cash amount below, then send your new proposal.</p>
+              </div>
+            )}
           </Section>
 
           <Section>
@@ -115,40 +140,36 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
               <div className="grid grid-cols-5 gap-2">
                 <div className="trade-summary-pill">
                   <span className="text-xs text-muted-foreground">Offer</span>
-
                   <span className="text-xl font-bold">{selectedMine.length}</span>
                 </div>
 
                 <div className="trade-summary-pill">
                   <span className="text-xs text-muted-foreground">Receive</span>
-
                   <span className="text-xl font-bold">{selectedTheirs.length}</span>
                 </div>
 
                 <div className="trade-summary-pill">
                   <span className="text-xs text-muted-foreground">Your Value</span>
-
                   <span className="font-semibold text-lg">₹{myValue.toLocaleString()}</span>
                 </div>
 
                 <div className="trade-summary-pill">
                   <span className="text-xs text-muted-foreground">Their Value</span>
-
                   <span className="font-semibold text-lg">₹{theirValue.toLocaleString()}</span>
                 </div>
 
                 <div
-                  className={`trade-summary-pill ${difference === 0 ? "" : youReceiveMore ? "border-emerald-500/30" : "border-amber-500/30"}`}
+                  className={`trade-summary-pill ${
+                    difference === 0 ? "" : youReceiveMore ? "border-emerald-500/30" : "border-amber-500/30"
+                  }`}
                 >
                   <span className="text-xs text-muted-foreground">Difference</span>
 
                   <span className="font-bold text-lg">₹{difference.toLocaleString()}</span>
                 </div>
               </div>
-              {/* WORKSPACE */}
-              <div className="grid gap-4 lg:grid-cols-[1fr_1fr_285px] items-start">
-                {/* MY INVENTORY */}
 
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr_285px] items-start">
                 <section className="trade-card rounded-[26px] overflow-hidden flex flex-col h-[455px]">
                   <div className="trade-card-accent" />
 
@@ -185,17 +206,15 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
                   </div>
                 </section>
 
-                {/* THEIR INVENTORY */}
-
                 <section className="trade-card rounded-[26px] overflow-hidden flex flex-col h-[455px]">
                   <div className="trade-card-accent" />
 
                   <div className="px-4 py-2.5 border-b border-border/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-[15px]"> Inventory</h3>
+                        <h3 className="font-semibold text-[15px]">Their Inventory</h3>
 
-                        <span className="text-xs text-muted-foreground">{myItems.length} items</span>
+                        <span className="text-xs text-muted-foreground">{theirItems.length} items</span>
                       </div>
 
                       <div className="trade-stat px-2 py-1 text-xs">{selectedTheirs.length} Selected</div>
@@ -211,7 +230,7 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
                           <motion.div key={item.itemId} layout transition={{ duration: 0.25 }} className="relative">
                             <TradeItemCard
                               item={item}
-                              requestedItem={item.itemId === selectedItemId}
+                              requestedItem={selectedItemId !== undefined && item.itemId === selectedItemId}
                               selected={selectedTheirs.includes(item.itemId)}
                               onClick={() => toggleTheirs(item)}
                             />
@@ -227,6 +246,7 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
                     </AnimatePresence>
                   </div>
                 </section>
+
                 <section className="trade-card rounded-[26px] overflow-hidden h-[455px] flex flex-col">
                   <div className="trade-card-accent" />
 
@@ -240,9 +260,11 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
 
                       <Input
                         type="number"
-                        className="h-8"
-                        value={cashAdjustment}
-                        onChange={(e) => setCashAdjustment(Number(e.target.value))}
+                        min={0}
+                        className="h-8 placeholder:text-foreground"
+                        placeholder="0"
+                        value={cashAdjustment === 0 ? "" : cashAdjustment}
+                        onChange={(e) => setCashAdjustment(e.target.value === "" ? 0 : Number(e.target.value))}
                       />
 
                       <div className="grid grid-cols-3 gap-1 mt-1.5">
@@ -278,7 +300,7 @@ export function TradeBuilderClient({ receiverId, selectedItemId, myItems, theirI
                     </div>
 
                     <div className="mt-auto space-y-2">
-                      <TradeFairnessCard yourValue={myValue} theirValue={theirValue} />
+                      <TradeFairnessCard yourValue={myValue} theirValue={theirValue} cashAdjustment={cashAdjustment} />
                     </div>
                   </div>
                 </section>

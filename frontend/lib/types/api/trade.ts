@@ -33,7 +33,7 @@ export interface TradeInboxResponse{
   status:TradeStatus
   yourItemCount:number
   theirItemCount:number
-  valueDifference:number
+  cashAdjustment: number
   updatedAt:string
   latestOffer:TradeOfferResponse
 }

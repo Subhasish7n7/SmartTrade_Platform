@@ -1,6 +1,9 @@
 package smarttrade.backend.dto.item;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import smarttrade.backend.entities.item.ItemCategory;
+import smarttrade.backend.entities.item.ItemCondition;
 
 import java.util.List;
 
@@ -10,8 +13,11 @@ public class CreateItemRequest {
     private String itemName;
     private Integer userPrice;
     private String description;
-    private String category;
-    private String condition;
+    @NotNull
+    private ItemCategory category;
+    @NotNull
+    private ItemCondition condition;
+    private String customCategory;
     private List<String> labels;
     private List<String> imageUrls;
     private Double latitude;

@@ -22,6 +22,7 @@ export async function getTrade(tradeId: number, tradeOfferId: number) {
   return response.data
 }
 export async function getTradeableItems(userId: number) {
+  console.log("api call",userId)
   const api = await serverApi()
   const response = await api.get(`/trade/users/${userId}/tradeable-items`)
   return response.data

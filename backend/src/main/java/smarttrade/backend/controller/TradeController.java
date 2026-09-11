@@ -21,6 +21,7 @@ public class TradeController {
 
     @PostMapping("/offer")
     public ResponseEntity<TradeOfferResponse> createTrade(@RequestBody CreateTradeOfferRequest request) {
+        System.out.println("end point hit "+request);
         TradeOfferEntity tradeOffer = tradeService.createTradeOffer(request);
         TradeOfferResponse response = tradeMapper.mapFromEntity(tradeOffer);
 

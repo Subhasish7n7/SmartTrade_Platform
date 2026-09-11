@@ -3,6 +3,7 @@ import { clientApi } from "@/lib/api/configs/client"
 import { CreateBuyRequest, CreateTradeOfferRequest, TradeOfferResponse } from "@/lib/types/api/trade"
 
 export async function createTradeOffer(payload: CreateTradeOfferRequest) {
+  console.log("api hit",payload)
   const response = await clientApi.post<TradeOfferResponse>("/trade/offer", payload)
 
   return response.data

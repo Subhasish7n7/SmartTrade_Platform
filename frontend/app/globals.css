@@ -166,7 +166,153 @@
   }
 }
 
+
 @layer utilities {
+  /* =======================================================
+   PREMIUM NAV ICONS
+   Subtle glow on the icon itself — not the button.
+   ======================================================= */
+
+.icon-glow {
+  --icon-color: var(--foreground);
+
+  color: var(--muted-foreground);
+
+  transition:
+    color 220ms ease,
+    background-color 220ms ease;
+}
+
+.icon-glow:hover {
+  color: var(--icon-color);
+  background-color: oklch(1 0 0 / 0.025);
+}
+
+.icon-glow > svg {
+  transition:
+    filter 220ms ease,
+    transform 220ms ease;
+}
+
+.icon-glow:hover > svg {
+  filter:
+    drop-shadow(0 0 2px color-mix(in oklch, var(--icon-color) 55%, transparent))
+    drop-shadow(0 0 5px color-mix(in oklch, var(--icon-color) 22%, transparent));
+
+  transform: scale(1.04);
+}
+
+.icon-glow-blue {
+  --icon-color: var(--trust-blue);
+}
+
+.icon-glow-violet {
+  --icon-color: var(--negotiation-violet);
+}
+
+.icon-glow-gold {
+  --icon-color: var(--premium-gold);
+}
+
+.icon-glow-cyan {
+  --icon-color: var(--chat-cyan);
+}
+
+.icon-glow-green {
+  --icon-color: var(--success);
+}
+.nav-count {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 999px;
+
+  border: 1px solid oklch(1 0 0 / 0.10);
+  background: oklch(0.18 0.02 260 / 0.94);
+
+  backdrop-filter: blur(12px);
+
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+
+  box-shadow:
+    0 2px 8px oklch(0 0 0 / 0.25);
+
+  pointer-events: none;
+}
+
+.nav-count-primary {
+  color: var(--primary);
+}
+
+.nav-count-warning {
+  color: var(--warning);
+}
+
+.nav-count-info {
+  color: var(--info);
+}
+.profile-avatar {
+  border: 2px solid oklch(0.72 0.19 165 / 0.18);
+
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.profile-avatar:hover {
+  border-color: oklch(0.72 0.19 165 / 0.62);
+
+  box-shadow:
+    0 0 0 2px oklch(0.72 0.19 165 / 0.08),
+    0 0 12px oklch(0.72 0.19 165 / 0.16);
+
+  transform: scale(1.025);
+}
+.premium-menu-item {
+  position: relative;
+
+  border-radius: 0.65rem;
+
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.premium-menu-item:hover {
+  background: oklch(1 0 0 / 0.055);
+}
+
+.premium-menu-item[data-highlighted] {
+  background: oklch(1 0 0 / 0.055);
+  color: var(--foreground);
+}
+
+/* Icon starts muted */
+.premium-menu-item svg {
+  color: var(--muted-foreground);
+
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+/* Icon becomes bright/neutral, not green */
+.premium-menu-item[data-highlighted] svg {
+  color: var(--foreground);
+  transform: translateX(1px);
+}
 .trade-card {
   position: relative;
 

@@ -29,4 +29,10 @@ export interface ChatConversationResponse {
   activeTradeCount: number
   pinnedTradeId?: number | null
 }
+export interface ChatPresenceEvent {
+  type: "PRESENCE_UPDATED"
+  conversationId: number
+  userId: number
+  online: boolean
+}
 

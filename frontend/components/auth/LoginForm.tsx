@@ -23,6 +23,7 @@ import { loginSchema, LoginSchema } from "@/lib/validation/auth"
 
 import { login } from "@/lib/api/auth/auth.client"
 import { toast } from "sonner"
+import { useAuth } from "@/lib/providers/auth-provider"
 
 interface Props {
   redirect: string;
@@ -30,6 +31,7 @@ interface Props {
 
 export function LoginForm({ redirect }: Props) {
   const router = useRouter()
+  const { refreshUser } = useAuth()
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
@@ -44,6 +46,8 @@ export function LoginForm({ redirect }: Props) {
     try {
       await login(values)
 
+      await refreshUser()
+      
       toast.success("Welcome back!")
 
       router.replace(redirect)

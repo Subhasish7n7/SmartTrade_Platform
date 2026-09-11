@@ -1,9 +1,9 @@
-import { ChatConversationResponse,ChatMessageResponse, PinTradeRequest } from "@/lib/types/api/chat";
+import { ChatMessageRequest ,ChatConversationResponse,ChatMessageResponse, PinTradeRequest } from "@/lib/types/api/chat";
 import { clientApi as api } from "../configs/client"
 import { stompClient } from "@/lib/api/configs/websocket";
 import { PageResponse } from "@/lib/types/api/page";
 
-export function sendChatMessage( otherUserId: number, message: string) {
+export function sendChatMessage( {otherUserId, message}:ChatMessageRequest) {
     if (!stompClient.connected) {
         throw new Error("WebSocket not connected");
     }
@@ -13,6 +13,18 @@ export function sendChatMessage( otherUserId: number, message: string) {
         body: JSON.stringify({ otherUserId, message,}),
     });
 }
+export function sendPresence(conversationId: number) {
+    if (!stompClient.connected) {
+      return
+    }
+
+    stompClient.publish({
+      destination: "/app/chat.presence",
+      body: JSON.stringify({
+        conversationId,
+      }),
+    })
+  }
 
 export async function getMessages( otherUserId:number,page=0,size=40){
 
@@ -30,7 +42,3 @@ export async function pinTrade(otherUserId:number, payload:PinTradeRequest) {
   const response = await api.put(`/chat/${otherUserId}/pin`,payload)
   return response.data
 }
-
-
-
-

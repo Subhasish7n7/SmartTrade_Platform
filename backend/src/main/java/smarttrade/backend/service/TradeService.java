@@ -8,7 +8,7 @@ import smarttrade.backend.dto.trade.*;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
-import smarttrade.backend.entities.ItemEntity;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.repository.TradeOfferRepo;
 import smarttrade.backend.repository.TradeRepo;
 import smarttrade.backend.repository.ItemRepo;
@@ -35,6 +35,7 @@ public class TradeService {
 
     @Transactional
     public TradeOfferEntity createTradeOffer(CreateTradeOfferRequest request) {
+        System.out.println("service hit "+request);
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
@@ -53,7 +54,6 @@ public class TradeService {
         validateTradeItems(senderItems, receiverItems, currentUser, receiver);
 
         TradeEntity trade;
-
         if (request.getTradeId() == null) {
 
             trade = TradeEntity.builder()
@@ -92,6 +92,7 @@ public class TradeService {
         log.info("User {} created trade offer {}", currentUser.getEmail(), trade.getTradeId());
 
         TradeOfferEntity savedOffer = tradeOfferRepo.save(offer);
+        System.out.println("repo hit "+savedOffer);
 
         boolean counter = tradeOfferRepo.countByTrade_TradeId(trade.getTradeId()) > 1;
 

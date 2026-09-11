@@ -28,7 +28,6 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
   const isHistoryMode = view === "history"
   const currentPath = `/trades/${tradeId}`
   const user = await requireUser(currentPath)
-
   let trade: TradeDetailsResponse
 
   try {
@@ -36,12 +35,25 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
   } catch {
     notFound()
   }
-  const theirItems: TradeItemResponse[] = trade?.offer.receiverItems ?? []
-  const yourItems: TradeItemResponse[] = trade?.offer.senderItems ?? []
-  const yourValue = yourItems.reduce((sum, item) => sum + item.userPrice, 0)
-  const theirValue = theirItems.reduce((sum, item) => sum + item.userPrice, 0)
+  const isSender = trade.offer.senderId === user.id
+
+  const yourItems: TradeItemResponse[] = isSender ? trade.offer.senderItems : trade.offer.receiverItems
+  const theirItems: TradeItemResponse[] = isSender ? trade.offer.receiverItems : trade.offer.senderItems
   const cashAdjustment = trade?.offer.cashAdjustment ?? 0
+
+  const senderValue = trade.offer.senderItems.reduce((sum, item) => sum + item.userPrice, 0)
+
+  const receiverValue = trade.offer.receiverItems.reduce((sum, item) => sum + item.userPrice, 0)
+
+  const senderValueWithCash = senderValue + cashAdjustment
+
+  const yourValue = isSender ? senderValueWithCash : receiverValue
+
+  const theirValue = isSender ? receiverValue : senderValueWithCash
+
+  const difference = Math.abs(theirValue - yourValue)
   const status = trade?.status ?? "NEGOTIATING"
+  const otherUserId = trade.initiatorId === user.id ? trade.receiverId : trade.initiatorId
 
   return (
     <main className="pt-20 pb-24">
@@ -108,7 +120,7 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
               <div className="trade-stat">
                 <p className="text-xs text-muted-foreground">Difference</p>
 
-                <p className="font-semibold mt-1">₹{Math.abs(theirValue - yourValue).toLocaleString()}</p>
+                <p className="font-semibold mt-1">₹{difference.toLocaleString()}</p>
               </div>
             </div>
           </Section>
@@ -173,7 +185,7 @@ export default async function TradeDetailPage({ params, searchParams }: Props) {
               </Section>
               {!isHistoryMode && status !== "COMPLETED" && status !== "CANCELLED" && status !== "EXPIRED" && (
                 <Section>
-                  <TradeDetailClient tradeId={trade.tradeId} />
+                  <TradeDetailClient tradeId={trade.tradeId} otherUserId={otherUserId} />
                 </Section>
               )}
             </div>

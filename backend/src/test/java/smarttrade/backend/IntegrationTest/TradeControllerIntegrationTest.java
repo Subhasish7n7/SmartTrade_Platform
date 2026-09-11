@@ -19,6 +19,7 @@ import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.dto.trade.CreateBuyRequest;
 import smarttrade.backend.dto.trade.CreateTradeOfferRequest;
 import smarttrade.backend.entities.*;
+import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;

@@ -37,6 +37,7 @@ public class ChatController {
 
         return chatService.getConversation(otherUserId, page, size);
     }
+
     @GetMapping("/chat/inbox")
     public List<ChatConversationResponse> getInbox() {
         return chatService.getInbox();
