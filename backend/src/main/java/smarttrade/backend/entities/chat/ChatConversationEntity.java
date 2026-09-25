@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import smarttrade.backend.entities.trade.TradeEntity;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 
 import java.time.LocalDateTime;
 

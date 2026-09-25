@@ -7,7 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.repository.UserRepo;
 
 import java.util.List;

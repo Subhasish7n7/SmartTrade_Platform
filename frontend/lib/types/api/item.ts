@@ -6,9 +6,23 @@ export const ITEM_CATEGORIES = [
   "AUDIO",
   "MONITORS",
   "BIKES",
+  "CARS",
   "WATCHES",
-  "COLLECTIBLES",
+  "FURNITURE",
+  "HOME_APPLIANCES",
+  "HOME_DECOR",
+  "KITCHEN",
   "BOOKS",
+  "CLOTHING",
+  "SHOES",
+  "BAGS",
+  "SPORTS",
+  "MUSICAL_INSTRUMENTS",
+  "TOYS",
+  "COLLECTIBLES",
+  "TOOLS",
+  "PET_SUPPLIES",
+  "BABY_KIDS",
   "OTHER",
 ] as const
 
@@ -26,6 +40,33 @@ export type ItemCondition = (typeof ITEM_CONDITIONS)[number]
 
 export type ListingType = "SALE" | "TRADE" | "BOTH"
 
+export type ItemPricingStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "READY"
+  | "FAILED"
+
+export type PricingRefreshOutcome =
+  | "STARTED"
+  | "ALREADY_RUNNING"
+  | "ALREADY_FRESH"
+  | "NOT_FOUND"
+
+export type PricingRefreshResponse = {
+  itemId: number
+  outcome: PricingRefreshOutcome
+  pricingStatus: ItemPricingStatus | null
+  pricingVersion: number
+  userPrice: number | null
+  newPrice: number | null
+  generatedPrice: number | null
+  priceFetchedAt: string | null
+  nextPriceRefreshAt: string | null
+  pricingErrorCode: string | null
+  pricingErrorMessage: string | null
+  message: string
+}
+
 export type ItemSort =
   | "RELEVANCE"
   | "PRICE_LOW_TO_HIGH"
@@ -33,19 +74,54 @@ export type ItemSort =
   | "NEWEST"
   | "DISTANCE"
 
+export interface ItemImageResponse {
+  id: number
+  secureUrl: string
+  publicId: string
+  assetId: string
+  width: number
+  height: number
+  format: string
+  bytes: number
+  sortOrder: number
+  createdAt: string
+}
+
+export interface ItemImageRequest {
+  id: number | null
+  secureUrl: string
+  publicId: string
+  assetId: string
+  width: number
+  height: number
+  format: string
+  bytes: number
+  sortOrder: number
+}
+
+export interface ItemImageDraft extends Omit<ItemImageRequest, "id"> {
+  id: number | null
+  deleteToken?: string | null
+}
+
 export interface ItemResponse {
   itemId: number
   itemName: string
   newPrice: number | null
   generatedPrice: number | null
   userPrice: number
+  pricingStatus: ItemPricingStatus
+  priceFetchedAt: string | null
+  nextPriceRefreshAt: string | null
+  pricingErrorCode: string | null
+  pricingErrorMessage: string | null
   seller: SellerUI
   description: string
   category: ItemCategory
   condition: ItemCondition
   customCategory: string | null
   labels: string[]
-  imageUrls: string[]
+  images: ItemImageResponse[]
   latitude: number | null
   longitude: number | null
   city: string | null
@@ -65,7 +141,7 @@ export interface CreateItemRequest {
   condition: ItemCondition
   customCategory?: string
   labels: string[]
-  imageUrls: string[]
+  images: ItemImageRequest[]
   latitude?: number
   longitude?: number
   city?: string
@@ -74,6 +150,7 @@ export interface CreateItemRequest {
   forTrade: boolean
   forSale: boolean
 }
+
 export interface UpdateItemRequest {
   itemName?: string
   userPrice?: number
@@ -82,12 +159,14 @@ export interface UpdateItemRequest {
   condition?: ItemCondition
   customCategory?: string
   labels?: string[]
-  imageUrls?: string[]
+  images?: ItemImageRequest[]
+  removedImageIds?: number[]
   latitude?: number
   longitude?: number
   city?: string
   state?: string
   locality?: string
+  clearCoordinates?: boolean
   forTrade?: boolean
   forSale?: boolean
 }
@@ -115,6 +194,7 @@ export interface ItemSearchResponse {
   totalItems: number
   hasNext: boolean
 }
+
 export interface SellerUI {
   userId: number
   name: string

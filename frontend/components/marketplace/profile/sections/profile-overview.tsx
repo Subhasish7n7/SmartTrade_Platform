@@ -157,7 +157,7 @@ export function ProfileOverview({ profile, items, isOwner }: Props) {
 }
 
 function FeaturedItemCard({ item }: { item: ItemResponse }) {
-  const image = item.imageUrls?.[0] ?? "/placeholder.jpg"
+  const image = item.images?.[0]?.secureUrl ?? "/placeholder.jpg"
   const listingType = item.forTrade && item.forSale ? "Trade / Sale" : item.forTrade ? "Trade Only" : "For Sale"
 
   return (

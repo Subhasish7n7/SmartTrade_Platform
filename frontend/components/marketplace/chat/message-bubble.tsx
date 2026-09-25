@@ -1,25 +1,19 @@
 "use client"
 
+import { ChatMessageResponse } from "@/lib/types/api/chat"
 
 interface Props {
-  message: ChatMessage
+  message: ChatMessageResponse
   showAvatar?: boolean
   mine: boolean
 }
 
-export function MessageBubble({
-  message,
-  mine,
-}: Props) {
+export function MessageBubble({ message, mine }: Props) {
   return (
     <div
       className={`
         flex
-        ${
-          mine
-            ? "justify-end"
-            : "justify-start"
-        }
+        ${mine ? "justify-end" : "justify-start"}
       `}
     >
       <div
@@ -44,14 +38,12 @@ export function MessageBubble({
       >
         <p>{message.message}</p>
 
-        <p
-          className="
-            text-xs
-            mt-2
-            text-muted-foreground
-          "
-        >
-          {message.timestamp}
+        <p className="text-xs mt-2 text-muted-foreground">
+          {new Date(message.timestamp).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })}
         </p>
       </div>
     </div>

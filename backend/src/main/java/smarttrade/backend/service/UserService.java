@@ -1,6 +1,6 @@
 package smarttrade.backend.service;
 
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.repository.UserRepo;
 import org.springframework.stereotype.Service;
 

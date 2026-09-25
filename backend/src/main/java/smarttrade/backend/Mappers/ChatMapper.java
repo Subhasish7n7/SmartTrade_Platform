@@ -5,7 +5,7 @@ import smarttrade.backend.dto.chat.ChatConversationResponse;
 import smarttrade.backend.dto.chat.ChatMessageResponse;
 import smarttrade.backend.entities.chat.ChatConversationEntity;
 import smarttrade.backend.entities.chat.ChatMessageEntity;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 
 @Component
 public class ChatMapper {
@@ -41,7 +41,11 @@ public class ChatMapper {
                 .conversationId(conversation.getId())
                 .otherUserId(otherUser.getUserId())
                 .otherUserName(otherUser.getName())
-                .avatarUrl(otherUser.getAvatarUrl())
+                .avatarUrl(
+                        otherUser.getAvatar() != null
+                                ? otherUser.getAvatar().getSecureUrl()
+                                : null
+                )
                 .lastMessage(lastMessage != null ? lastMessage.getMessage() : null)
                 .lastMessageAt(lastMessage != null ? lastMessage.getCreatedAt(): null)
                 .unreadCount(unreadCount)

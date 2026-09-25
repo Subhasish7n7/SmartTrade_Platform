@@ -21,58 +21,98 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.dto.item.CreateItemRequest;
+import smarttrade.backend.dto.item.ItemSearchRequest;
+import smarttrade.backend.dto.item.ItemSort;
+import smarttrade.backend.dto.item.UpdateItemRequest;
+import smarttrade.backend.entities.user.UserEntity;
+import smarttrade.backend.entities.item.ItemCategory;
+import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.entities.item.ItemEntity;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.item.ItemPricingStatus;
 import smarttrade.backend.repository.ItemRepo;
 import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.security.CookieService;
 import smarttrade.backend.security.JwtService;
-import smarttrade.backend.service.PriceEstimationService;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import smarttrade.backend.service.pricing.PriceEstimationService;
+import smarttrade.backend.service.pricing.PricingBackgroundService;
+import smarttrade.backend.service.pricing.PricingRefreshOutcome;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import jakarta.servlet.http.Cookie;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import java.util.UUID;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
-public class ItemControllerIntegrationTest {
-
+class ItemControllerIntegrationTest {
 
     @Container
     static PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(DockerImageName.parse("postgis/postgis:16-3.4")
-                    .asCompatibleSubstituteFor("postgres"))
+            new PostgreSQLContainer<>(
+                    DockerImageName.parse("postgis/postgis:16-3.4")
+                            .asCompatibleSubstituteFor("postgres")
+            )
                     .withDatabaseName("testdb")
                     .withUsername("test")
                     .withPassword("test");
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
-
         registry.add(
                 "spring.jpa.properties.hibernate.dialect",
                 () -> "org.hibernate.spatial.dialect.postgis.PostgisPG95Dialect"
         );
-
-        registry.add("jwt.secret",
-                () -> "thisisaverylongsecretkeyfortestingjwt123456");
-
+        registry.add("jwt.secret", () -> "thisisaverylongsecretkeyfortestingjwt123456");
         registry.add("frontend.url", () -> "http://localhost:3000");
-
-        registry.add("price.api.enabled", () -> "false");
-
         registry.add("serp.api.key", () -> "dummy");
+        registry.add("pricing.refresh-window-hours", () -> "168");
+    }
+    private RequestPostProcessor csrfCookie() {
+        String csrfToken = UUID.randomUUID().toString();
+
+        return request -> {
+            Cookie csrfCookie =
+                    new Cookie("XSRF-TOKEN", csrfToken);
+
+            Cookie[] existingCookies = request.getCookies();
+
+            if (existingCookies == null || existingCookies.length == 0) {
+                request.setCookies(csrfCookie);
+            } else {
+                Cookie[] combinedCookies =
+                        Arrays.copyOf(
+                                existingCookies,
+                                existingCookies.length + 1
+                        );
+
+                combinedCookies[existingCookies.length] = csrfCookie;
+
+                request.setCookies(combinedCookies);
+            }
+
+            request.addHeader("X-XSRF-TOKEN", csrfToken);
+
+            return request;
+        };
     }
 
     @Autowired
@@ -91,15 +131,18 @@ public class ItemControllerIntegrationTest {
     private JwtService jwtService;
 
     @MockitoBean
+    private PricingBackgroundService pricingBackgroundService;
+
+    @MockitoBean
     private PriceEstimationService priceEstimationService;
 
-    private String token;
-
     private UserEntity user;
+    private UserEntity otherUser;
+    private String token;
+    private String otherToken;
 
     @BeforeEach
-    void setup() {
-
+    void setUp() {
         itemRepo.deleteAll();
         userRepo.deleteAll();
 
@@ -111,51 +154,110 @@ public class ItemControllerIntegrationTest {
                         .build()
         );
 
+        otherUser = userRepo.save(
+                UserEntity.builder()
+                        .email("other@test.com")
+                        .password("password")
+                        .name("Other User")
+                        .build()
+        );
+
         token = jwtService.generateToken(user.getEmail());
-
-        when(priceEstimationService.fetchEstimatedNewPrice(anyString(), anyInt()))
-                .thenReturn(1000);
-
-        when(priceEstimationService.generateUsedPrice(any(), any()))
-                .thenReturn(700);
+        otherToken = jwtService.generateToken(otherUser.getEmail());
     }
 
     @Test
     void shouldGetAllItems() throws Exception {
-
-        itemRepo.save(createItem());
+        itemRepo.save(createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD));
 
         mockMvc.perform(get("/items"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].itemName").value("Laptop"));
+                .andExpect(jsonPath("$[0].itemName").value("Laptop"))
+                .andExpect(jsonPath("$[0].seller.userId").value(user.getUserId()))
+                .andExpect(jsonPath("$[0].seller.name").value("Test User"));
+    }
+
+    @Test
+    void shouldGetItemById() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Phone", 30000, ItemCategory.PHONES, ItemCondition.LIKE_NEW)
+        );
+
+        mockMvc.perform(get("/items/" + saved.getItemId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itemId").value(saved.getItemId()))
+                .andExpect(jsonPath("$.itemName").value("Phone"))
+                .andExpect(jsonPath("$.category").value("PHONES"))
+                .andExpect(jsonPath("$.condition").value("LIKE_NEW"));
+    }
+
+    @Test
+    void shouldReturnNotFoundForUnknownItem() throws Exception {
+        mockMvc.perform(get("/items/999999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldGetUserInventory() throws Exception {
+        itemRepo.save(createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD));
+        itemRepo.save(createItem(user, "Phone", 30000, ItemCategory.PHONES, ItemCondition.NEW));
+        itemRepo.save(createItem(otherUser, "Camera", 40000, ItemCategory.CAMERAS, ItemCondition.GOOD));
+
+        mockMvc.perform(
+                        get("/items/user/" + user.getUserId())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token)
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].seller.userId").value(user.getUserId()))
+                .andExpect(jsonPath("$[1].seller.userId").value(user.getUserId()))
+                .andExpect(jsonPath("$[2]").doesNotExist());
     }
 
     @Test
     void shouldCreateItem() throws Exception {
-
         CreateItemRequest request = new CreateItemRequest();
 
         request.setItemName("Phone");
-        request.setUserPrice(500);
-        request.setCondition("used - good");
-        request.setCategory("electronics");
+        request.setUserPrice(50000);
+        request.setCategory(ItemCategory.PHONES);
+        request.setCondition(ItemCondition.GOOD);
+        request.setDescription("Good condition phone");
+        request.setLabels(List.of("phone", "android"));
+        request.setCity("Bhubaneswar");
+        request.setState("Odisha");
+        request.setLocality("Patia");
+        request.setLatitude(20.2961);
+        request.setLongitude(85.8245);
 
         mockMvc.perform(
                         post("/items")
-                                .header("Authorization", "Bearer " + token)
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.itemName").value("Phone"));
+                .andExpect(jsonPath("$.itemName").value("Phone"))
+                .andExpect(jsonPath("$.userPrice").value(50000))
+                .andExpect(jsonPath("$.category").value("PHONES"))
+                .andExpect(jsonPath("$.condition").value("GOOD"))
+                .andExpect(jsonPath("$.pricingStatus").value("PENDING"))
+                .andExpect(jsonPath("$.latitude").value(20.2961))
+                .andExpect(jsonPath("$.longitude").value(85.8245))
+                .andExpect(jsonPath("$.seller.userId").value(user.getUserId()));
+
+        List<ItemEntity> items = itemRepo.findAll();
+
+        assertTrue(
+                items.stream()
+                        .anyMatch(i -> "Phone".equals(i.getItemName()))
+        );
     }
 
     @Test
     void shouldRejectCreateWithoutJwt() throws Exception {
-
-        CreateItemRequest request = new CreateItemRequest();
-
-        request.setItemName("Phone");
+        CreateItemRequest request = validCreateRequest();
 
         mockMvc.perform(
                         post("/items")
@@ -166,56 +268,314 @@ public class ItemControllerIntegrationTest {
     }
 
     @Test
-    void shouldDeleteOwnedItem() throws Exception {
+    void shouldRejectCreateWithInvalidRequiredFields() throws Exception {
+        CreateItemRequest request = new CreateItemRequest();
+        request.setItemName("Phone");
 
-        ItemEntity saved = itemRepo.save(createItem());
+        mockMvc.perform(
+                        post("/items")
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldUpdateOwnedItem() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setItemName("Updated Laptop");
+        request.setDescription("Updated description");
+
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itemName").value("Updated Laptop"))
+                .andExpect(jsonPath("$.description").value("Updated description"));
+
+        ItemEntity updated = itemRepo.findById(saved.getItemId()).orElseThrow();
+        assertTrue("Updated Laptop".equals(updated.getItemName()));
+        assertTrue("Updated description".equals(updated.getDescription()));
+    }
+
+    @Test
+    void shouldRejectUpdateByDifferentUser() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setItemName("Hijacked Laptop");
+
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .header("Authorization", "Bearer " + otherToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldDeleteOwnedItem() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
 
         mockMvc.perform(
                         delete("/items/" + saved.getItemId())
-                                .header("Authorization", "Bearer " + token)
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
                 )
                 .andExpect(status().isNoContent());
+
+        assertTrue(itemRepo.findById(saved.getItemId()).isEmpty());
+    }
+
+    @Test
+    void shouldRejectDeleteByDifferentUser() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+
+        mockMvc.perform(
+                        delete("/items/" + saved.getItemId())
+                                .header("Authorization", "Bearer " + otherToken)
+                )
+                .andExpect(status().isForbidden());
+
+        assertTrue(itemRepo.findById(saved.getItemId()).isPresent());
     }
 
     @Test
     void shouldToggleAvailability() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
 
-        ItemEntity saved = itemRepo.save(createItem());
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId() + "/availability")
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .param("available", "false")
+                )
+                .andExpect(status().isOk());
+
+        ItemEntity updated = itemRepo.findById(saved.getItemId()).orElseThrow();
+        assertFalse(updated.isAvailable());
+    }
+
+    @Test
+    void shouldRejectAvailabilityChangeByDifferentUser() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
 
         mockMvc.perform(
                         patch("/items/" + saved.getItemId() + "/availability")
                                 .param("available", "false")
+                                .header("Authorization", "Bearer " + otherToken)
+                )
+                .andExpect(status().isForbidden());
+
+        assertTrue(itemRepo.findById(saved.getItemId()).orElseThrow().isAvailable());
+    }
+
+    @Test
+    void shouldSearchItemsWithNameAndPriceFilters() throws Exception {
+        ItemEntity laptop = createItem(user, "Gaming Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD);
+        laptop.setLabels(List.of("gaming", "laptop"));
+        itemRepo.save(laptop);
+
+        ItemEntity phone = createItem(user, "Phone", 30000, ItemCategory.PHONES, ItemCondition.NEW);
+        phone.setLabels(List.of("phone"));
+        itemRepo.save(phone);
+
+        ItemSearchRequest request = new ItemSearchRequest();
+        request.setName("gaming");
+        request.setMinPrice(40000);
+        request.setMaxPrice(60000);
+        request.setSort(ItemSort.PRICE_LOW_TO_HIGH);
+        request.setPage(0);
+        request.setSize(10);
+
+        mockMvc.perform(
+                        post("/items/search")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].itemName").value("Gaming Laptop"))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void shouldSearchItemsByListingType() throws Exception {
+        ItemEntity sale = createItem(user, "Sale Item", 10000, ItemCategory.OTHER, ItemCondition.GOOD);
+        sale.setCustomCategory("Sale Category");
+        sale.setForSale(true);
+        sale.setForTrade(false);
+        itemRepo.save(sale);
+
+        ItemEntity trade = createItem(user, "Trade Item", 10000, ItemCategory.OTHER, ItemCondition.GOOD);
+        trade.setCustomCategory("Trade Category");
+        trade.setForSale(false);
+        trade.setForTrade(true);
+        itemRepo.save(trade);
+
+        ItemSearchRequest request = new ItemSearchRequest();
+        request.setListingType(smarttrade.backend.entities.item.ListingType.TRADE);
+
+        mockMvc.perform(
+                        post("/items/search")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].itemName").value("Trade Item"));
+    }
+
+    @Test
+    void shouldSearchItemsByDistanceWithRadius() throws Exception {
+        ItemEntity nearby = createItem(user, "Nearby", 20000, ItemCategory.PHONES, ItemCondition.GOOD);
+        nearby.setLocation(point(85.8245, 20.2961));
+        itemRepo.save(nearby);
+
+        ItemEntity farAway = createItem(user, "Far Away", 20000, ItemCategory.PHONES, ItemCondition.GOOD);
+        farAway.setLocation(point(-74.0060, 40.7128));
+        itemRepo.save(farAway);
+
+        ItemSearchRequest request = new ItemSearchRequest();
+        request.setLatitude(20.2961);
+        request.setLongitude(85.8245);
+        request.setRadiusKm(5.0);
+        request.setSort(ItemSort.DISTANCE);
+
+        mockMvc.perform(
+                        post("/items/search")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].itemName").value("Nearby"));
+    }
+
+    @Test
+    void shouldRejectDistanceSearchWithoutCoordinates() throws Exception {
+        ItemSearchRequest request = new ItemSearchRequest();
+        request.setSort(ItemSort.DISTANCE);
+
+        mockMvc.perform(
+                        post("/items/search")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRefreshPriceAndReturnAccepted() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+        saved.setPricingStatus(ItemPricingStatus.PENDING);
+        saved.setPriceFetchedAt(null);
+        itemRepo.save(saved);
+
+        mockMvc.perform(
+                        post("/items/" + saved.getItemId() + "/price/refresh")
                                 .header("Authorization", "Bearer " + token)
                 )
-                .andExpect(status().isOk());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.itemId").value(saved.getItemId()))
+                .andExpect(jsonPath("$.outcome").value(PricingRefreshOutcome.STARTED.name()))
+                .andExpect(jsonPath("$.pricingStatus").value(ItemPricingStatus.IN_PROGRESS.name()))
+                .andExpect(jsonPath("$.pricingVersion").value(1));
 
-        ItemEntity updated =
-                itemRepo.findById(saved.getItemId()).orElseThrow();
-
-        assert !updated.isAvailable();
+        verify(pricingBackgroundService).execute(org.mockito.ArgumentMatchers.any());
     }
 
-    private ItemEntity createItem() {
+    @Test
+    void shouldReturnNotFoundWhenRefreshingUnknownItemPrice() throws Exception {
+        mockMvc.perform(
+                        post("/items/999999/price/refresh")
+                                .header("Authorization", "Bearer " + token)
+                )
+                .andExpect(status().isNotFound());
+    }
 
+    @Test
+    void shouldReturnBadRequestForInvalidPriceRange() throws Exception {
+        ItemSearchRequest request = new ItemSearchRequest();
+        request.setMinPrice(50000);
+        request.setMaxPrice(10000);
+
+        mockMvc.perform(
+                        post("/items/search")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    private CreateItemRequest validCreateRequest() {
+        CreateItemRequest request = new CreateItemRequest();
+        request.setItemName("Laptop");
+        request.setUserPrice(50000);
+        request.setCategory(ItemCategory.COMPUTERS);
+        request.setCondition(ItemCondition.GOOD);
+        return request;
+    }
+
+    private ItemEntity createItem(
+            UserEntity owner,
+            String name,
+            int userPrice,
+            ItemCategory category,
+            ItemCondition condition
+    ) {
+        ItemEntity item = ItemEntity.builder()
+                .itemName(name)
+                .newPrice(80000)
+                .generatedPrice(55000)
+                .userPrice(userPrice)
+                .pricingStatus(ItemPricingStatus.READY)
+                .priceFetchedAt(LocalDateTime.now().minusHours(1))
+                .pricingVersion(1L)
+                .user(owner)
+                .description("Test item")
+                .category(category)
+                .condition(condition)
+                .labels(List.of("test"))
+                .available(true)
+                .forSale(true)
+                .forTrade(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        item.setLocation(point(85.8245, 20.2961));
+        return item;
+    }
+
+    private Point point(double longitude, double latitude) {
         GeometryFactory geometryFactory =
                 new GeometryFactory(new PrecisionModel(), 4326);
-
-        Point point =
-                geometryFactory.createPoint(
-                        new Coordinate(85.8245, 20.2961)
-                );
-
-        return itemRepo.save(
-                ItemEntity.builder()
-                        .itemName("Laptop")
-                        .user(user)
-                        .category("electronics")
-                        .condition("used - good")
-                        .available(true)
-                        .location(point)
-                        .build()
-        );
+        return geometryFactory.createPoint(new Coordinate(longitude, latitude));
     }
-
-
 }

@@ -5,7 +5,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.chat.ChatPresenceEvent;
 import smarttrade.backend.dto.chat.ChatPresenceEventType;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.entities.chat.ChatConversationEntity;
 import smarttrade.backend.repository.ChatConversationRepo;
 

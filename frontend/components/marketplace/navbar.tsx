@@ -1,6 +1,10 @@
 "use client"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -18,250 +22,354 @@ import { useAuth } from "@/lib/providers/auth-provider"
 import { useNotifications } from "@/lib/providers/notification-provider"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeftRight, Bell, ChevronDown, Heart, LogOut, Menu, MessageCircle, Package, Search, Settings, User, X } from "lucide-react"
+import {
+  ArrowLeftRight,
+  Bell,
+  ChevronDown,
+  Heart,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Package,
+  Search,
+  Settings,
+  User,
+  X,
+} from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
+
 import { Notification } from "./notification"
 
 interface NavbarProps {
   className?: string
 }
 
+const navItems = [
+  { label: "Marketplace", href: "/marketplace" },
+  { label: "My Inventory", href: "/inventory" },
+  { label: "Trades", href: "/trades" },
+  { label: "Community", href: "/community" },
+]
+
 export function Navbar({ className }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false)
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
+  const [searchValue, setSearchValue] = React.useState("")
+
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const { user, setUser } = useAuth()
 
-  const { unreadCount: notificationCount, tradeAlertCount, chatAlertCount, markModuleNotificationsRead } = useNotifications()
+  const {
+    unreadCount: notificationCount,
+    tradeAlertCount,
+    chatAlertCount,
+    markModuleNotificationsRead,
+  } = useNotifications()
+
+  React.useEffect(() => {
+    const queryName = searchParams.get("name") ?? ""
+    setSearchValue(queryName)
+  }, [searchParams])
 
   React.useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
+      setScrolled(window.scrollY > 16)
     }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    })
+
+    return () =>
+      window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const trimmed = searchValue.trim()
+    const nextUrl = trimmed
+      ? `/marketplace?name=${encodeURIComponent(trimmed)}`
+      : "/marketplace"
+
+    setIsSearchOpen(false)
+    setIsMenuOpen(false)
+
+    router.push(nextUrl)
+  }
+
+  const clearSearch = () => {
+    setSearchValue("")
+    setIsSearchOpen(false)
+    setIsMenuOpen(false)
+    router.push("/marketplace")
+  }
 
   const handleLogout = async () => {
     try {
-      // Stop the authenticated WebSocket session first.
       await stompClient.deactivate()
-
-      // Clear the HttpOnly JWT cookie on the backend.
       await logout()
-
-      // Remove the authenticated user from application state.
       setUser(null)
 
       router.replace("/login")
       router.refresh()
     } catch (error) {
       console.error("Logout failed", error)
-
       toast.error("Failed to log out")
     }
   }
-  const navItems = [
-    { label: "Marketplace", href: "/" },
-    { label: "My Inventory", href: "/inventory" },
-    { label: "Trades", href: "/trades" },
-    { label: "Community", href: "/community" },
-  ]
+
+  const isActive = (href: string) => {
+    if (href === "/marketplace") {
+      return pathname === "/marketplace"
+    }
+
+    return pathname.startsWith(href)
+  }
 
   return (
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        scrolled ? "glass-strong" : "bg-background/80 backdrop-blur-md",
+        "marketplace-navbar",
+        scrolled && "marketplace-navbar-scrolled",
         className,
       )}
     >
-      <div className="mx-auto max-w-7xl px-4">
-        <div className="flex h-16 items-center justify-between gap-4">
-          {/* Left Section - Menu & Logo */}
-          <div className="flex items-center gap-4">
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              className="lg:hidden text-muted-foreground hover:text-foreground"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              <AnimatePresence mode="wait">
-                {isMenuOpen ? (
-                  <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <X className="h-[21px] w-[21px]" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <Menu className="h-[21px] w-[21px]" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 shrink-0">
-              <div className="relative">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                  <ArrowLeftRight className="h-4 w-4 text-background" />
-                </div>
-                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 blur-lg opacity-40" />
-              </div>
-              <span className="text-lg font-bold hidden sm:block">
-                <span className="text-gradient">Smart</span>
-                <span className="text-foreground">Trade</span>
-              </span>
-            </Link>
-
-            {/* Desktop Nav Items */}
-            <div className="hidden lg:flex items-center gap-1 ml-6">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+      <div className="mx-auto max-w-[1600px] px-3 sm:px-5 lg:px-7">
+        <div className="flex min-h-16 items-center gap-3 py-2 lg:gap-4">
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            className="lg:hidden text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+            onClick={() => setIsMenuOpen((open) => !open)}
+          >
+            <AnimatePresence mode="wait">
+              {isMenuOpen ? (
+                <motion.div
+                  key="close"
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
                 >
-                  {item.label}
-                </Link>
-              ))}
+                  <X className="h-[21px] w-[21px]" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="menu"
+                  initial={{ rotate: 90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -90, opacity: 0 }}
+                >
+                  <Menu className="h-[21px] w-[21px]" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+
+          <Link
+            href="/"
+            className="marketplace-navbar-brand shrink-0"
+          >
+            <div className="marketplace-navbar-logo">
+              <ArrowLeftRight className="h-4 w-4 text-background" />
             </div>
+
+            <span className="hidden text-lg font-bold sm:block">
+              <span className="text-gradient">Smart</span>
+              <span className="text-foreground">Trade</span>
+            </span>
+          </Link>
+
+          <div className="hidden items-center gap-1 lg:flex">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "marketplace-navbar-link",
+                  isActive(item.href) &&
+                    "marketplace-navbar-link-active",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
 
-          {/* Center Section - Search */}
-          <div className="flex-1 max-w-md hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search items, traders, collections..."
-                className="w-full pl-10 bg-muted/50 border-border/50 focus:border-primary/50 focus:bg-muted transition-all"
-              />
-            </div>
+          <div className="hidden min-w-0 flex-1 justify-center md:flex">
+            <form
+              onSubmit={submitSearch}
+              className="w-full max-w-2xl"
+            >
+              <div className="marketplace-navbar-search">
+                <Search className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+
+                <Input
+                  type="search"
+                  value={searchValue}
+                  onChange={(event) =>
+                    setSearchValue(event.target.value)
+                  }
+                  placeholder="Search the marketplace..."
+                  aria-label="Search the marketplace"
+                  className="h-11 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/90"
+                />
+
+                {searchValue && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Clear search"
+                    onClick={clearSearch}
+                    className="marketplace-navbar-search-clear"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                <kbd className="hidden rounded-lg border border-white/[0.07] bg-white/[0.035] px-2 py-1 text-[10px] font-medium text-muted-foreground xl:inline-block">
+                  Enter
+                </kbd>
+              </div>
+            </form>
           </div>
 
-          {/* Right Section - Actions */}
-          <div className="flex items-center gap-2">
-            {/* Mobile Search Toggle */}
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             <Button
               variant="ghost"
               size="icon-lg"
-              className="md:hidden text-muted-foreground hover:text-foreground"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="md:hidden text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+              onClick={() =>
+                setIsSearchOpen((open) => !open)
+              }
             >
               <Search className="h-[21px] w-[21px]" />
               <span className="sr-only">Search</span>
             </Button>
 
-            {/* Wishlist */}
             <Button
               variant="ghost"
               size="icon-lg"
-              className="icon-glow icon-glow-violet hidden sm:flex relative
-             hover:bg-transparent dark:hover:bg-transparent"
+              className="icon-glow icon-glow-violet hidden sm:flex relative hover:bg-transparent"
             >
               <Heart className="h-[21px] w-[21px]" />
               <span className="sr-only">Wishlist</span>
             </Button>
 
-            {/* Notifications */}
             <Notification />
 
-            {/* Trades */}
             <Link
               href="/trades"
-              onClick={() => {
+              onClick={() =>
                 void markModuleNotificationsRead("TRADE")
-              }}
+              }
             >
               <Button
                 variant="ghost"
                 size="icon-lg"
-                className="icon-glow icon-glow-gold relative
-               hover:bg-transparent dark:hover:bg-transparent"
+                className="icon-glow icon-glow-gold relative hover:bg-transparent"
               >
                 <ArrowLeftRight className="h-[21px] w-[21px]" />
 
                 {tradeAlertCount > 0 && (
-                  <span className="nav-count nav-count-warning">{tradeAlertCount > 99 ? "99+" : tradeAlertCount}</span>
+                  <span className="nav-count nav-count-warning">
+                    {tradeAlertCount > 99
+                      ? "99+"
+                      : tradeAlertCount}
+                  </span>
                 )}
 
-                <span className="sr-only">Trade offers</span>
+                <span className="sr-only">
+                  Trade offers
+                </span>
               </Button>
             </Link>
 
-            {/* Messages */}
             <Link
               href="/messages"
-              onClick={() => {
-                void markModuleNotificationsRead("CHAT_CONVERSATION")
-              }}
+              onClick={() =>
+                void markModuleNotificationsRead(
+                  "CHAT_CONVERSATION",
+                )
+              }
             >
               <Button
                 variant="ghost"
                 size="icon-lg"
-                className="icon-glow icon-glow-blue relative
-               hover:bg-transparent dark:hover:bg-transparent"
+                className="icon-glow icon-glow-blue relative hover:bg-transparent"
               >
                 <MessageCircle className="h-[21px] w-[21px]" />
 
-                {chatAlertCount > 0 && <span className="nav-count nav-count-info">{chatAlertCount > 99 ? "99+" : chatAlertCount}</span>}
+                {chatAlertCount > 0 && (
+                  <span className="nav-count nav-count-info">
+                    {chatAlertCount > 99
+                      ? "99+"
+                      : chatAlertCount}
+                  </span>
+                )}
 
-                <span className="sr-only">Messages</span>
+                <span className="sr-only">
+                  Messages
+                </span>
               </Button>
             </Link>
-            {/* Profile / Account Menu */}
+
             {user ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="hidden sm:flex items-center gap-2 px-1.5
-             hover:bg-transparent
-             dark:hover:bg-transparent
-             hover:text-inherit
-             dark:hover:text-inherit"
+                    className="marketplace-profile-trigger hidden items-center gap-2 px-1.5 hover:bg-transparent sm:flex"
                   >
                     <Avatar className="profile-avatar h-8 w-8">
                       <AvatarImage src={user.avatarUrl} />
-                      <AvatarFallback className="bg-muted text-muted-foreground">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-[var(--trust-blue)]/20 via-[var(--negotiation-violet)]/15 to-[var(--premium-gold)]/10 text-xs font-bold text-foreground">
+                        {user.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
                     </Avatar>
 
-                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" sideOffset={10} className="w-64 glass-strong border-border/60 p-2">
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={10}
+                  className="w-64 glass-strong border-border/60 p-2"
+                >
                   <DropdownMenuLabel className="px-3 py-2">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={user.avatarUrl} />
-                        <AvatarFallback className="bg-muted">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-gradient-to-br from-[var(--trust-blue)]/20 via-[var(--negotiation-violet)]/15 to-[var(--premium-gold)]/10">
+                          {user.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
                       </Avatar>
 
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{user.name}</p>
+                        <p className="truncate font-medium">
+                          {user.name}
+                        </p>
 
-                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
                       </div>
                     </div>
                   </DropdownMenuLabel>
@@ -269,69 +377,105 @@ export function Navbar({ className }: NavbarProps) {
                   <DropdownMenuSeparator />
 
                   <DropdownMenuGroup>
-                    <DropdownMenuItem asChild className="premium-menu-item">
-                      <Link href="/profile" className="cursor-pointer">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
+                      <Link href="/profile">
                         <User className="mr-2 h-4 w-4" />
                         Profile
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild className="premium-menu-item">
-                      <Link href="/inventory" className="cursor-pointer">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
+                      <Link href="/inventory">
                         <Package className="mr-2 h-4 w-4" />
                         My Inventory
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild className="premium-menu-item">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
                       <Link
                         href="/trades"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          void markModuleNotificationsRead("TRADE")
-                        }}
+                        onClick={() =>
+                          void markModuleNotificationsRead(
+                            "TRADE",
+                          )
+                        }
                       >
                         <ArrowLeftRight className="mr-2 h-4 w-4" />
                         My Trades
-                        {tradeAlertCount > 0 && <span className="ml-auto text-xs text-warning">{tradeAlertCount}</span>}
+
+                        {tradeAlertCount > 0 && (
+                          <span className="ml-auto text-xs text-warning">
+                            {tradeAlertCount}
+                          </span>
+                        )}
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild className="premium-menu-item">
-                      <Link href="/wishlist" className="cursor-pointer">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
+                      <Link href="/wishlist">
                         <Heart className="mr-2 h-4 w-4" />
                         Wishlist
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild className="premium-menu-item">
-                      <Link href="/notifications" className="cursor-pointer">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
+                      <Link href="/notifications">
                         <Bell className="mr-2 h-4 w-4" />
                         Notifications
-                        {notificationCount > 0 && <span className="ml-auto text-xs text-primary">{notificationCount}</span>}
+
+                        {notificationCount > 0 && (
+                          <span className="ml-auto text-xs text-primary">
+                            {notificationCount}
+                          </span>
+                        )}
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild className="premium-menu-item">
+                    <DropdownMenuItem
+                      asChild
+                      className="premium-menu-item"
+                    >
                       <Link
                         href="/messages"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          void markModuleNotificationsRead("CHAT_CONVERSATION")
-                        }}
+                        onClick={() =>
+                          void markModuleNotificationsRead(
+                            "CHAT_CONVERSATION",
+                          )
+                        }
                       >
                         <MessageCircle className="mr-2 h-4 w-4" />
                         Messages
-                        {chatAlertCount > 0 && <span className="ml-auto text-xs text-info">{chatAlertCount}</span>}
+
+                        {chatAlertCount > 0 && (
+                          <span className="ml-auto text-xs text-info">
+                            {chatAlertCount}
+                          </span>
+                        )}
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
 
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem asChild className="premium-menu-item">
+                  <DropdownMenuItem
+                    asChild
+                    className="premium-menu-item"
+                  >
                     <Link href="/settings">
                       <Settings className="mr-2.5 h-4 w-4" />
                       Settings
@@ -351,79 +495,114 @@ export function Navbar({ className }: NavbarProps) {
               </DropdownMenu>
             ) : (
               <Link href="/login">
-                <Button variant="trade">Login</Button>
+                <Button
+                  variant="trade"
+                  className="rounded-xl"
+                >
+                  Login
+                </Button>
               </Link>
             )}
 
-            {/* Mobile Profile */}
-            <Avatar className="h-8 w-8 sm:hidden ring-2 ring-primary/30">
-              <AvatarImage src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face" />
-              <AvatarFallback className="bg-muted text-muted-foreground">JD</AvatarFallback>
-            </Avatar>
+            {user && (
+              <Avatar className="h-8 w-8 sm:hidden ring-2 ring-[var(--trust-blue)]/25">
+                <AvatarImage src={user.avatarUrl} />
+                <AvatarFallback className="bg-gradient-to-br from-[var(--trust-blue)]/20 via-[var(--negotiation-violet)]/15 to-[var(--premium-gold)]/10 text-xs font-bold">
+                  {user.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mobile Search Overlay */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border/50"
+            className="border-t border-white/[0.06] md:hidden"
           >
-            <div className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <form
+              onSubmit={submitSearch}
+              className="p-3 sm:p-4"
+            >
+              <div className="marketplace-navbar-search">
+                <Search className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+
                 <Input
                   type="search"
-                  placeholder="Search items, traders, collections..."
-                  className="w-full pl-10 bg-muted/50 border-border/50"
+                  value={searchValue}
+                  onChange={(event) =>
+                    setSearchValue(event.target.value)
+                  }
+                  placeholder="Search the marketplace..."
+                  aria-label="Search the marketplace"
                   autoFocus
+                  className="h-11 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0"
                 />
+
+                {searchValue && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Clear search"
+                    onClick={clearSearch}
+                    className="marketplace-navbar-search-clear"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
-            </div>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden border-t border-border/50 glass-strong"
+            className="border-t border-white/[0.06] glass-strong lg:hidden"
           >
-            <div className="p-4 space-y-1">
+            <div className="space-y-1 p-4">
               {navItems.map((item, index) => (
                 <motion.div
                   key={item.href}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: index * 0.04 }}
                 >
                   <Link
                     href={item.href}
-                    className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                    className={cn(
+                      "marketplace-navbar-mobile-link",
+                      isActive(item.href) &&
+                        "marketplace-navbar-mobile-link-active",
+                    )}
+                    onClick={() =>
+                      setIsMenuOpen(false)
+                    }
                   >
                     {item.label}
                   </Link>
                 </motion.div>
               ))}
-              <div className="pt-4 border-t border-border/50">
-                <Link
-                  href="/wishlist"
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Heart className="h-4 w-4" />
-                  Wishlist
-                </Link>
-              </div>
+
+              <div className="my-3 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
+
+              <Link
+                href="/wishlist"
+                className="marketplace-navbar-mobile-link"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Heart className="h-4 w-4" />
+                Wishlist
+              </Link>
             </div>
           </motion.div>
         )}

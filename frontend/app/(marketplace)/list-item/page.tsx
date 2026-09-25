@@ -11,9 +11,7 @@ interface Props {
   }>
 }
 
-export default async function ItemListingPage({
-  searchParams,
-}: Props) {
+export default async function ItemListingPage({ searchParams }: Props) {
   const { editId } = await searchParams
 
   let initialItem
@@ -36,70 +34,64 @@ export default async function ItemListingPage({
 
   return (
     <main className="min-h-screen overflow-hidden bg-background pt-20 pb-24">
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_15%_8%,rgba(59,130,246,.10),transparent_32%),radial-gradient(circle_at_85%_15%,rgba(168,85,247,.08),transparent_30%),radial-gradient(circle_at_50%_0%,rgba(16,185,129,.05),transparent_36%)]" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_15%_8%,rgba(59,130,246,.10),transparent_31%),radial-gradient(circle_at_84%_12%,rgba(168,85,247,.08),transparent_29%),radial-gradient(circle_at_50%_0%,rgba(16,185,129,.05),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8">
         <AnimatedPage>
           <Section>
-            <BackButton />
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <BackButton />
+
+              <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+                <StepDot index="01" label="Details" active />
+                <span className="h-px w-5 bg-border/60" />
+                <StepDot index="02" label="Value" active />
+                <span className="h-px w-5 bg-border/60" />
+                <StepDot index="03" label={isEdit ? "Save" : "Publish"} active />
+              </div>
+            </div>
           </Section>
 
           <Section>
-            <div className="trade-inbox-hero relative overflow-hidden rounded-[30px] border border-border/50 px-5 py-6 sm:px-7 sm:py-7">
-              <div className="pointer-events-none absolute right-[-70px] top-[-90px] h-64 w-64 rounded-full bg-[var(--premium-gold)]/7 blur-3xl" />
-              <div className="pointer-events-none absolute bottom-[-90px] left-[35%] h-56 w-56 rounded-full bg-[var(--trust-blue)]/6 blur-3xl" />
+            <div className="marketplace-page-intro px-5 py-5 sm:px-6 sm:py-6">
+              <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-primary">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_12px_rgba(45,212,191,.65)]" />
+                      {isEdit ? "Listing editor" : "Marketplace listing"}
+                    </span>
 
-              <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_12px_rgba(45,212,191,.6)]" />
-
-                    {isEdit
-                      ? "Listing editor"
-                      : "Marketplace listing"}
+                    {isEdit && (
+                      <span className="rounded-full border border-[var(--negotiation-violet)]/20 bg-[var(--negotiation-violet)]/[0.06] px-2.5 py-1 text-[var(--negotiation-violet)]">
+                        Editing #{initialItem?.itemId}
+                      </span>
+                    )}
                   </div>
 
-                  <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                    {isEdit
-                      ? "Refine your listing."
-                      : "List something worth trading."}
+                  <h1 className="mt-3 text-2xl font-bold tracking-[-0.025em] sm:text-[2rem]">
+                    {isEdit ? "Refine your listing." : "List something worth trading."}
                   </h1>
 
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
                     {isEdit
                       ? "Update the details, photos, value, and terms of your existing listing."
-                      : "Give traders the details they need to understand your item, judge its value, and decide whether to buy or make an offer."}
+                      : "Add the details traders need to understand your item, value, and terms."}
                   </p>
                 </div>
 
-                <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
-                  <StepDot
-                    index="01"
-                    label="Details"
-                    active
-                  />
-
-                  <span className="h-px w-7 bg-border/60" />
-
-                  <StepDot
-                    index="02"
-                    label="Value"
-                    active
-                  />
-
-                  <span className="h-px w-7 bg-border/60" />
-
-                  <StepDot
-                    index="03"
-                    label={isEdit ? "Save" : "Publish"}
-                  />
+                <div className="flex items-center gap-2 self-start text-[10px] text-muted-foreground lg:self-auto">
+                  <span className="rounded-full border border-border/60 bg-white/[0.025] px-2.5 py-1.5">3 steps</span>
+                  <span className="rounded-full border border-[var(--trust-blue)]/15 bg-[var(--trust-blue)]/[0.05] px-2.5 py-1.5 text-[var(--trust-blue)]">
+                    Faster listing flow
+                  </span>
                 </div>
               </div>
             </div>
           </Section>
 
           <Section>
-            <ItemListingForm initialItem={initialItem} />
+            <ItemListingForm key={initialItem?.itemId ?? "new"} initialItem={initialItem} />
           </Section>
         </AnimatedPage>
       </div>
@@ -121,13 +113,12 @@ function StepDot({
       <span
         className={`flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 text-[10px] font-bold ${
           active
-            ? "border-primary/30 bg-primary/10 text-primary"
+            ? "border-primary/30 bg-primary/10 text-primary shadow-[0_0_18px_rgba(45,212,191,.08)]"
             : "border-border/50 bg-white/[0.02] text-muted-foreground"
         }`}
       >
         {index}
       </span>
-
       <span>{label}</span>
     </div>
   )

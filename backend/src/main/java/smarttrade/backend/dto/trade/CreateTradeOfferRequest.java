@@ -12,4 +12,6 @@ public class CreateTradeOfferRequest {
     private List<Long> receiverItemIds;
     private Double cashAdjustment;
     private Long tradeId;
+
+    private String initialMessage;
 }

@@ -10,6 +10,7 @@ import java.util.List;
 
 @Repository
 public interface TradeRepo extends JpaRepository<TradeEntity, Long> {
+
     @Query("""
     SELECT COUNT(t)
     FROM TradeEntity t

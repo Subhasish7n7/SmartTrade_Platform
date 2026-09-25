@@ -1,7 +1,7 @@
 package smarttrade.backend.TestDataUtil;
 
 import smarttrade.backend.dto.trade.TradeOfferDto;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 
 import java.util.List;
 

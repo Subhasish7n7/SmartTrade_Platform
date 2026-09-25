@@ -1,4 +1,11 @@
-import { CreateItemRequest, ItemResponse, ItemSearchFilters, ItemSearchResponse, UpdateItemRequest } from "@/lib/types/api/item"
+import type {
+  CreateItemRequest,
+  ItemResponse,
+  ItemSearchFilters,
+  ItemSearchResponse,
+  PricingRefreshResponse,
+  UpdateItemRequest,
+} from "@/lib/types/api/item"
 
 import { clientApi } from "../configs/client"
 
@@ -27,6 +34,14 @@ export async function getMarketplaceItems() {
   return response.data
 }
 
+export async function getRecentMarketplaceItems(page = 0, size = 25): Promise<ItemResponse[]> {
+  const response = await clientApi.get<ItemResponse[]>("/items/recent", {
+    params: { page, size},
+  })
+
+  return response.data
+}
+
 export async function getItemsByUser(userId: number) {
   const response = await clientApi.get<ItemResponse[]>(`/items/user/${userId}`)
   return response.data
@@ -41,9 +56,14 @@ export async function createItem(request: CreateItemRequest) {
   const response = await clientApi.post<ItemResponse>("/items", request)
   return response.data
 }
+
 export async function updateItem(itemId: number, request: UpdateItemRequest) {
   const response = await clientApi.patch<ItemResponse>(`/items/${itemId}`, request)
+  return response.data
+}
 
+export async function refreshItemPrice(itemId: number) {
+  const response = await clientApi.post<PricingRefreshResponse>(`/items/${itemId}/price/refresh`)
   return response.data
 }
 

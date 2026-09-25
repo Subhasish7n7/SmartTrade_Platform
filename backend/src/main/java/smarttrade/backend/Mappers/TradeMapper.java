@@ -3,13 +3,16 @@ package smarttrade.backend.Mappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.trade.*;
+import smarttrade.backend.entities.item.ItemImageEntity;
+import smarttrade.backend.entities.item.ItemImageStatus;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.item.ItemEntity;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.repository.TradeOfferRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Component
@@ -24,7 +27,13 @@ public class TradeMapper {
         return TradeItemResponse.builder()
                 .itemId(item.getItemId())
                 .name(item.getItemName())
-                .imageUrl(item.getImageUrls().getFirst())
+                .imageUrl(
+                        item.getImages().stream()
+                                .filter(image -> image.getStatus() == ItemImageStatus.ACTIVE)
+                                .min(Comparator.comparing(ItemImageEntity::getSortOrder))
+                                .map(ItemImageEntity::getSecureUrl)
+                                .orElse(null)
+                )
                 .userPrice(item.getUserPrice())
                 .systemGeneratedPrice(item.getGeneratedPrice())
                 .condition(item.getCondition())

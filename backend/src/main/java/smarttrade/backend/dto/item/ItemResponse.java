@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemCondition;
+import smarttrade.backend.entities.item.ItemPricingStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,20 +19,25 @@ public class ItemResponse {
     private Integer newPrice;
     private Integer generatedPrice;
     private Integer userPrice;
+    private ItemPricingStatus pricingStatus;
+    private LocalDateTime priceFetchedAt;
+    private LocalDateTime nextPriceRefreshAt;
+    private String pricingErrorCode;
+    private String pricingErrorMessage;
     private SellerSummaryDto seller;
-    private String description;              // Item description
-    private ItemCategory category;                 // Category (e.g., electronics, books)
-    private ItemCondition condition;                // "new", "used - like new", "used - good", etc.
+    private String description;
+    private ItemCategory category;
+    private ItemCondition condition;
     private String customCategory;
-    private List<String> labels;            // Keywords, e.g., ["gaming", "intel", "DDR4"]
-    private List<String> imageUrls;
-    private Double latitude;                // For location-based filtering
+    private List<String> labels;
+    private List<ItemImageResponse> images;
+    private Double latitude;
     private Double longitude;
     private String city;
     private String state;
     private String locality;
-    private boolean available = true;     // Mark item as available/traded
-    private boolean forTrade = false;     // Whether item is marked for trade
-    private boolean forSale = true;       // Whether item is marked for sale
+    private boolean available = true;
+    private boolean forTrade = false;
+    private boolean forSale = true;
     private LocalDateTime createdAt;
 }

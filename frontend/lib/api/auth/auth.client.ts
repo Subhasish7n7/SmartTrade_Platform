@@ -13,6 +13,5 @@ export async function register(request: RegisterRequest) {
 }
 
 export async function logout() {
-  // set user to null in order to deactivate ws. setUser(null)
   await clientApi.post("/auth/logout")
 }

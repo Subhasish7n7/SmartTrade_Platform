@@ -1,0 +1,656 @@
+/* SmartTrade marketplace entry — component-local styles */
+
+:global(.marketplace-entry) {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 22% 20%, oklch(0.68 0.16 245 / 0.07), transparent 30%),
+    radial-gradient(circle at 90% 60%, oklch(0.7 0.18 305 / 0.08), transparent 30%), var(--background);
+}
+
+:global(.marketplace-entry-background) {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+:global(.marketplace-entry-grid) {
+  position: absolute;
+  inset: -15%;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.018) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black 25%, transparent 82%);
+  transform: perspective(1000px) rotateX(62deg) translateY(20%);
+  transform-origin: center bottom;
+  animation: marketplace-entry-grid-drift 18s linear infinite;
+}
+
+:global(.marketplace-entry-grid::after) {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(0.68 0.16 245 / 0.07), transparent);
+  transform: translateX(-100%);
+  animation: marketplace-entry-scan 7s ease-in-out infinite;
+}
+
+:global(.marketplace-entry-orb) {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(36px);
+  opacity: 0.38;
+}
+
+:global(.marketplace-entry-orb-a) {
+  width: 25rem;
+  height: 25rem;
+  left: -6rem;
+  top: 18%;
+  background: oklch(0.68 0.16 245 / 0.15);
+}
+:global(.marketplace-entry-orb-b) {
+  width: 22rem;
+  height: 22rem;
+  right: -5rem;
+  top: 26%;
+  background: oklch(0.7 0.18 305 / 0.14);
+}
+
+:global(.marketplace-entry-noise) {
+  position: absolute;
+  inset: 0;
+  opacity: 0.028;
+  background-image:
+    radial-gradient(circle at 25% 25%, white 0.6px, transparent 0.8px), radial-gradient(circle at 70% 65%, white 0.6px, transparent 0.8px);
+  background-size:
+    22px 22px,
+    27px 27px;
+  mix-blend-mode: screen;
+}
+
+:global(.marketplace-entry-title) {
+  max-width: 52rem;
+  color: var(--foreground);
+  font-size: clamp(3rem, 4.4vw, 4.65rem);
+  line-height: 0.94;
+  font-weight: 760;
+  letter-spacing: -0.06em;
+  text-wrap: balance;
+}
+
+:global(.marketplace-entry-title span) {
+  color: transparent;
+  background: linear-gradient(100deg, var(--trust-blue), var(--negotiation-violet) 58%, var(--premium-gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 0 50px oklch(0.68 0.16 245 / 0.07);
+}
+
+:global(.marketplace-entry-copy) {
+  max-width: 41rem;
+  color: color-mix(in oklch, var(--foreground) 72%, var(--muted-foreground) 28%);
+  font-size: clamp(0.92rem, 1.28vw, 1.03rem);
+  line-height: 1.6;
+}
+
+:global(.marketplace-entry-launch) {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 14rem;
+  padding: 0.66rem 0.66rem 0.66rem 0.95rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, oklch(1 0 0 / 0.055), oklch(1 0 0 / 0.022));
+  color: var(--foreground);
+  box-shadow:
+    inset 0 1px oklch(1 0 0 / 0.045),
+    0 18px 42px oklch(0 0 0 / 0.16);
+  backdrop-filter: blur(20px);
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+:global(.marketplace-entry-launch:hover) {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklch, var(--trust-blue) 35%, transparent);
+  box-shadow:
+    inset 0 1px oklch(1 0 0 / 0.06),
+    0 23px 48px oklch(0.68 0.16 245 / 0.07);
+}
+
+:global(.marketplace-entry-launch-icon) {
+  display: inline-flex;
+  width: 2.65rem;
+  height: 2.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, var(--trust-blue), var(--negotiation-violet) 60%, var(--premium-gold));
+  color: var(--background);
+  box-shadow: 0 8px 24px oklch(0.68 0.16 245 / 0.16);
+}
+
+:global(.marketplace-entry-scroll-hint) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted-foreground);
+  font-size: 0.66rem;
+  font-weight: 650;
+}
+:global(.marketplace-entry-scroll-line) {
+  width: 2rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--muted-foreground));
+}
+
+:global(.marketplace-entry-metric) {
+  display: flex;
+  min-width: 0;
+  min-height: 3.85rem;
+  align-items: center;
+  gap: 0.58rem;
+  padding: 0.66rem;
+  border: 1px solid oklch(1 0 0 / 0.055);
+  border-radius: 0.9rem;
+  background: linear-gradient(145deg, oklch(1 0 0 / 0.038), oklch(1 0 0 / 0.014));
+  box-shadow:
+    inset 0 1px oklch(1 0 0 / 0.025),
+    0 10px 28px oklch(0 0 0 / 0.07);
+  backdrop-filter: blur(18px);
+}
+:global(.marketplace-entry-metric-icon) {
+  display: inline-flex;
+  width: 1.95rem;
+  height: 1.95rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.64rem;
+  background: color-mix(in oklch, var(--metric-accent) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--metric-accent) 20%, transparent);
+  color: var(--metric-accent);
+}
+:global(.marketplace-entry-metric-value) {
+  color: var(--foreground);
+  font-size: 0.9rem;
+  line-height: 1rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+:global(.marketplace-entry-metric-label) {
+  margin-top: 0.16rem;
+  color: var(--muted-foreground);
+  font-size: 0.57rem;
+  line-height: 0.85rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:global(.marketplace-entry-metric-blue) {
+  --metric-accent: var(--trust-blue);
+}
+:global(.marketplace-entry-metric-cyan) {
+  --metric-accent: var(--chat-cyan);
+}
+:global(.marketplace-entry-metric-violet) {
+  --metric-accent: var(--negotiation-violet);
+}
+:global(.marketplace-entry-metric-gold) {
+  --metric-accent: var(--premium-gold);
+}
+
+:global(.marketplace-entry-stage) {
+  position: relative;
+  width: min(100%, 42rem);
+  height: 32rem;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.075);
+  border-radius: 1.8rem;
+  background:
+    radial-gradient(circle at 35% 22%, oklch(0.68 0.16 245 / 0.08), transparent 35%),
+    radial-gradient(circle at 72% 72%, oklch(0.7 0.18 305 / 0.08), transparent 36%),
+    linear-gradient(150deg, oklch(0.16 0.02 260 / 0.7), oklch(0.11 0.01 260 / 0.86));
+  box-shadow:
+    inset 0 1px oklch(1 0 0 / 0.035),
+    0 30px 80px oklch(0 0 0 / 0.18);
+  backdrop-filter: blur(24px);
+}
+:global(.marketplace-entry-stage-glow) {
+  position: absolute;
+  left: 52%;
+  top: 50%;
+  width: 24rem;
+  height: 24rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: conic-gradient(
+    from 40deg,
+    oklch(0.68 0.16 245 / 0.13),
+    oklch(0.7 0.18 305 / 0.09),
+    oklch(0.82 0.14 85 / 0.07),
+    oklch(0.68 0.16 245 / 0.13)
+  );
+  filter: blur(48px);
+  animation: marketplace-entry-stage-pulse 7s ease-in-out infinite;
+}
+:global(.marketplace-entry-stage-title) {
+  position: absolute;
+  left: 1.2rem;
+  top: 1.05rem;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: color-mix(in oklch, var(--foreground) 72%, var(--muted-foreground) 28%);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+:global(.marketplace-entry-card) {
+  position: absolute;
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 1.18rem;
+  background: linear-gradient(145deg, oklch(0.16 0.02 260 / 0.88), oklch(0.11 0.01 260 / 0.94));
+  box-shadow:
+    0 22px 56px oklch(0 0 0 / 0.24),
+    0 0 0 1px oklch(1 0 0 / 0.022) inset;
+  backdrop-filter: blur(22px);
+}
+:global(.marketplace-entry-card-featured),
+:global(.marketplace-entry-card-supporting-one),
+:global(.marketplace-entry-card-supporting-two),
+:global(.marketplace-entry-card-supporting-three),
+:global(.marketplace-entry-card-supporting-four) {
+  width: 19rem;
+}
+
+/* First three cards share the same visual size and form
+   the main overlapping composition. */
+:global(.marketplace-entry-card-featured) {
+  right: 8%;
+  top: 14%;
+  z-index: 6;
+  opacity: 1;
+  transform: rotate(-2deg);
+}
+
+:global(.marketplace-entry-card-supporting-one) {
+  left: 8%;
+  top: 23%;
+  z-index: 4;
+  opacity: 0.94;
+  transform: rotate(-7deg);
+}
+
+:global(.marketplace-entry-card-supporting-two) {
+  right: 5%;
+  bottom: 8%;
+  z-index: 3;
+  opacity: 0.9;
+  transform: rotate(6deg);
+}
+
+/* Extra cards, when you eventually show 4–5, sit behind
+   the main three instead of competing with them. */
+:global(.marketplace-entry-card-supporting-three) {
+  left: 20%;
+  bottom: 3%;
+  z-index: 2;
+  opacity: 0.32;
+  transform: rotate(-4deg) scale(0.9);
+}
+
+:global(.marketplace-entry-card-supporting-four) {
+  right: 18%;
+  top: 10%;
+  z-index: 1;
+  opacity: 0.24;
+  transform: rotate(8deg) scale(0.88);
+}
+:global(.marketplace-entry-card-loading) {
+  height: 18rem;
+  background: linear-gradient(110deg, oklch(1 0 0 / 0.02) 28%, oklch(1 0 0 / 0.055) 48%, oklch(1 0 0 / 0.02) 68%);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+:global(.marketplace-entry-card-image) {
+  position: relative;
+  height: 13.6rem;
+  overflow: hidden;
+  background: linear-gradient(135deg, oklch(0.68 0.16 245 / 0.08), oklch(0.7 0.18 305 / 0.08));
+}
+:global(.marketplace-entry-card-featured .marketplace-entry-card-image),
+:global(.marketplace-entry-card-supporting-one .marketplace-entry-card-image),
+:global(.marketplace-entry-card-supporting-two .marketplace-entry-card-image),
+:global(.marketplace-entry-card-supporting-three .marketplace-entry-card-image),
+:global(.marketplace-entry-card-supporting-four .marketplace-entry-card-image) {
+  height: 11.5rem;
+}
+:global(.marketplace-entry-card-image img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 500ms ease;
+}
+:global(.marketplace-entry-card:hover .marketplace-entry-card-image img) {
+  transform: scale(1.04);
+}
+:global(.marketplace-entry-card-image::after) {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, oklch(0.11 0.01 260 / 0.82));
+  pointer-events: none;
+}
+:global(.marketplace-entry-card-image-fallback) {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+}
+:global(.marketplace-entry-card-badge) {
+  position: absolute;
+  left: 0.62rem;
+  top: 0.62rem;
+  z-index: 2;
+  padding: 0.28rem 0.48rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(0.11 0.01 260 / 0.62);
+  color: var(--foreground);
+  font-size: 0.54rem;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
+}
+:global(.marketplace-entry-card-body) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.78rem;
+}
+:global(.marketplace-entry-card-category) {
+  color: var(--muted-foreground);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:global(.marketplace-entry-card-price) {
+  color: var(--foreground);
+  font-size: 0.72rem;
+  line-height: 0.95rem;
+  font-weight: 750;
+}
+:global(.marketplace-entry-card-supporting-one .marketplace-entry-card-body),
+:global(.marketplace-entry-card-supporting-two .marketplace-entry-card-body),
+:global(.marketplace-entry-card-supporting-three .marketplace-entry-card-body),
+:global(.marketplace-entry-card-supporting-four .marketplace-entry-card-body) {
+  padding: 0.62rem;
+}
+:global(.marketplace-entry-card-supporting-one h3),
+:global(.marketplace-entry-card-supporting-two h3),
+:global(.marketplace-entry-card-supporting-three h3),
+:global(.marketplace-entry-card-supporting-four h3) {
+  font-size: 0.7rem;
+}
+:global(.marketplace-entry-card-supporting-one .marketplace-entry-card-price),
+:global(.marketplace-entry-card-supporting-two .marketplace-entry-card-price),
+:global(.marketplace-entry-card-supporting-three .marketplace-entry-card-price),
+:global(.marketplace-entry-card-supporting-four .marketplace-entry-card-price) {
+  font-size: 0.62rem;
+}
+
+:global(.marketplace-entry-empty-icon) {
+  display: inline-flex;
+  width: 3.1rem;
+  height: 3.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklch, var(--trust-blue) 22%, transparent);
+  border-radius: 0.95rem;
+  background: color-mix(in oklch, var(--trust-blue) 7%, transparent);
+  color: var(--trust-blue);
+}
+
+:global(.marketplace-entry-scroll-sentinel) {
+  height: 1rem;
+  width: 100%;
+}
+:global(.marketplace-entry-scroll-gate) {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  transform: translateX(-50%);
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+:global(.marketplace-entry-progress-ring) {
+  position: relative;
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 999px;
+  background: linear-gradient(145deg, oklch(0.16 0.02 260 / 0.78), oklch(0.11 0.01 260 / 0.84));
+  box-shadow:
+    0 12px 28px oklch(0 0 0 / 0.18),
+    inset 0 1px oklch(1 0 0 / 0.04);
+  backdrop-filter: blur(16px);
+}
+:global(.marketplace-entry-progress-ring svg) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+:global(.marketplace-entry-progress-track),
+:global(.marketplace-entry-progress-value) {
+  fill: none;
+  stroke-width: 2.5;
+}
+:global(.marketplace-entry-progress-track) {
+  stroke: oklch(1 0 0 / 0.08);
+}
+:global(.marketplace-entry-progress-value) {
+  stroke: url(#entryProgressGradient);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - (var(--progress, 0) * 100));
+  transition: stroke-dashoffset 90ms ease-out;
+}
+
+:global(.marketplace-entry-curtain) {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 38%, oklch(0.68 0.16 245 / 0.15), transparent 30%),
+    linear-gradient(150deg, var(--trust-blue), var(--negotiation-violet) 56%, var(--premium-gold));
+}
+:global(.marketplace-entry-curtain::before) {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, oklch(0 0 0 / 0.08), transparent 40%, oklch(0 0 0 / 0.14));
+}
+:global(.marketplace-entry-curtain-mark) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--background);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+@keyframes marketplace-entry-grid-drift {
+  from {
+    transform: perspective(1000px) rotateX(62deg) translate3d(0, 20%, 0);
+  }
+  to {
+    transform: perspective(1000px) rotateX(62deg) translate3d(72px, 20%, 0);
+  }
+}
+@keyframes marketplace-entry-scan {
+  0%,
+  45% {
+    transform: translateX(-100%);
+  }
+  72%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes marketplace-entry-stage-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.58;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 0.88;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 1024px) {
+  :global(.marketplace-entry-title span) {
+  color: transparent;
+  background:
+    linear-gradient(
+      100deg,
+      var(--trust-blue),
+      var(--negotiation-violet) 58%,
+      var(--premium-gold)
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow:
+    0 0 50px oklch(0.68 0.16 245 / 0.08),
+    0 0 70px oklch(0.7 0.18 305 / 0.06);
+}
+
+  :global(.marketplace-entry-stage) {
+    height: 27.5rem;
+  }
+  :global(.marketplace-entry-card-featured) {
+    top: 3.4rem;
+    width: 20rem;
+  }
+  :global(.marketplace-entry-card-image) {
+    height: 11.5rem;
+  }
+}
+@media (max-width: 1023px) {
+  :global(.marketplace-entry-scroll-gate) {
+    bottom: 0.75rem;
+  }
+}
+@media (max-width: 767px) {
+  :global(.marketplace-entry-title) {
+    font-size: clamp(2.85rem, 13vw, 4.4rem);
+    line-height: 0.94;
+  }
+  :global(.marketplace-entry-copy) {
+    max-width: 32rem;
+  }
+  :global(.marketplace-entry-scroll-hint) {
+    display: none;
+  }
+  :global(.marketplace-entry-scroll-sentinel) {
+    height: 0.75rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :global(.marketplace-entry-grid),
+  :global(.marketplace-entry-grid::after),
+  :global(.marketplace-entry-card-loading),
+  :global(.marketplace-entry-stage-glow) {
+    animation: none !important;
+  }
+}
+/* =======================================================
+   FEATURED LISTING — 3+ CARD BALANCE
+   Keep the main card dominant while making supporting
+   listings visibly separate.
+   ======================================================= */
+
+:global(.marketplace-entry-card) {
+  width: 19rem;
+}
+
+:global(.marketplace-entry-card-1) {
+  left: 19%;
+  top: 12%;
+  z-index: 6;
+  transform: rotate(-2deg);
+}
+
+:global(.marketplace-entry-card-2) {
+  left: 2%;
+  top: 36%;
+  right: auto;
+  z-index: 2;
+  width: 15.5rem;
+  transform: rotate(-7deg);
+}
+
+:global(.marketplace-entry-card-3) {
+  right: 2%;
+  top: 48%;
+  bottom: auto;
+  left: auto;
+  z-index: 3;
+  width: 15.5rem;
+  transform: rotate(6deg);
+}
+
+:global(.marketplace-entry-card-4) {
+  left: 10%;
+  right: auto;
+  bottom: 4%;
+  top: auto;
+  z-index: 4;
+  width: 15rem;
+  transform: rotate(4deg);
+}
+
+:global(.marketplace-entry-card-5) {
+  right: 10%;
+  left: auto;
+  bottom: 3%;
+  top: auto;
+  z-index: 2;
+  width: 15rem;
+  transform: rotate(-4deg);
+}

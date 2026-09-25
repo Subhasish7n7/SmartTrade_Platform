@@ -1,3 +1,6 @@
+import { CalendarDays, Clock, MapPin, Package, Tag } from "lucide-react"
+import { notFound } from "next/navigation"
+
 import { AnimatedPage, Section } from "@/components/marketplace/animations/section"
 import { BackButton } from "@/components/marketplace/back-button"
 import { ActionButtons } from "@/components/marketplace/item-detail/action-buttons"
@@ -7,10 +10,9 @@ import { PricingCard } from "@/components/marketplace/item-detail/pricing-card"
 import { SellerCard } from "@/components/marketplace/item-detail/seller-card"
 import { SimilarItems } from "@/components/marketplace/item-detail/similar-items"
 import { Badge } from "@/components/ui/badge"
+
 import { getCurrentUser } from "@/lib/api/auth/auth.server"
 import { getItemById } from "@/lib/api/items/server"
-import { Clock } from "lucide-react"
-import { notFound } from "next/navigation";
 
 interface Props {
   params: Promise<{
@@ -20,11 +22,28 @@ interface Props {
 
 export default async function ItemDetailPage({ params }: Props) {
   const { id } = await params
-  const item = await getItemById(Number(id)).catch(() => null);
-  const user = await getCurrentUser().catch(() => null);
-  if (!item) notFound();
 
-  
+  const item = await getItemById(Number(id)).catch(() => null)
+
+  const user = await getCurrentUser().catch(() => null)
+
+  if (!item) {
+    notFound()
+  }
+
+  const categoryLabel = item.category === "OTHER" ? item.customCategory || "Other" : formatEnum(item.category)
+
+  const conditionLabel = formatEnum(item.condition)
+
+  const listingType =
+    item.forTrade && item.forSale ? "Trade / Sale" : item.forTrade ? "Trade only" : item.forSale ? "For sale" : "Unavailable"
+
+  const locationLabel = [item.locality, item.city, item.state].filter(Boolean).join(", ")
+
+  const createdAt = new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(item.createdAt))
 
   return (
     <main className="pt-20 pb-32 lg:pb-16">
@@ -33,56 +52,105 @@ export default async function ItemDetailPage({ params }: Props) {
           <Section>
             <BackButton />
           </Section>
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            {/* LEFT */}
-            <div className="lg:col-span-3 space-y-6">
-              <Section>
-                <ItemGallery images={item.imageUrls} itemName={item.itemName} />
-              </Section>
-              {/* ITEM INFO */}
-              <Section>
-                <div className="content-surface p-6">
-                  <div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {item.forTrade && item.forSale ? (
-                        <Badge className="bg-gradient-to-r from-primary to-info text-primary-foreground border-none">Trade / Sale</Badge>
-                      ) : item.forTrade ? (
-                        <Badge className="bg-primary/90 text-primary-foreground border-none">Trade Only</Badge>
-                      ) : item.forSale ? (
-                        <Badge className="bg-info/90 text-info-foreground border-none">For Sale</Badge>
-                      ) : null}
 
-                      <Badge variant="outline">{item.condition}</Badge>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+            {/* LEFT */}
+            <div className="space-y-6 lg:col-span-3">
+              <Section>
+                <ItemGallery images={item.images} itemName={item.itemName} />
+              </Section>
+
+              <Section>
+                <div className="content-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
+                  {/* HEADER */}
+                  <div>
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {item.forTrade && item.forSale && (
+                        <Badge className="border-none bg-gradient-to-r from-primary to-info text-primary-foreground">Trade / Sale</Badge>
+                      )}
+
+                      {item.forTrade && !item.forSale && (
+                        <Badge className="border-none bg-primary/90 text-primary-foreground">Trade Only</Badge>
+                      )}
+
+                      {item.forSale && !item.forTrade && <Badge className="border-none bg-info/90 text-info-foreground">For Sale</Badge>}
+
+                      <Badge variant="outline">{conditionLabel}</Badge>
+
+                      {!item.available && (
+                        <Badge variant="outline" className="border-amber-400/20 text-amber-300">
+                          Currently unavailable
+                        </Badge>
+                      )}
                     </div>
 
-                    <h1 className="text-3xl font-bold">{item.itemName}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{item.itemName}</h1>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <CalendarDays className="h-4 w-4" />
+                        Listed {createdAt}
+                      </span>
+
+                      {locationLabel && (
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="h-4 w-4" />
+                          {locationLabel}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {item.createdAt}
-                    </span>
+                  {/* QUICK DETAILS */}
+                  <div className="mt-5 grid gap-2 sm:grid-cols-4">
+                    <InfoTile icon={<Package className="h-4 w-4" />} label="Category" value={categoryLabel} tone="blue" />
+
+                    <InfoTile icon={<Tag className="h-4 w-4" />} label="Condition" value={conditionLabel} tone="violet" />
+
+                    <InfoTile icon={<Clock className="h-4 w-4" />} label="Listing" value={listingType} tone="gold" />
+
+                    <InfoTile
+                      icon={<Package className="h-4 w-4" />}
+                      label="Availability"
+                      value={item.available ? "Available" : "Unavailable"}
+                      tone={item.available ? "success" : "warning"}
+                    />
                   </div>
 
-                  <div>
-                    <h3 className="font-medium mb-2">Description</h3>
+                  {/* DESCRIPTION */}
+                  <div className="mt-8">
+                    <div className="mb-2 flex items-center justify-between gap-4">
+                      <h2 className="font-semibold">Description</h2>
+                    </div>
 
-                    <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                    {item.description?.trim() ? (
+                      <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{item.description}</p>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground">No additional description was provided.</p>
+                    )}
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {(item.labels ?? []).map((label) => (
-                      <Badge key={label} variant="secondary">
-                        {label}
-                      </Badge>
-                    ))}
-                  </div>
+                  {/* LABELS */}
+                  {item.labels?.length > 0 && (
+                    <div className="mt-8">
+                      <h2 className="mb-3 font-semibold">Tags</h2>
+
+                      <div className="flex flex-wrap gap-2">
+                        {item.labels.map((label) => (
+                          <Badge key={label} variant="secondary" className="border border-white/[0.06] bg-white/[0.03]">
+                            #{label}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Section>
+
               <Section>
                 <SellerCard seller={item.seller} />
               </Section>
+
               <Section>
                 <SimilarItems />
               </Section>
@@ -94,12 +162,11 @@ export default async function ItemDetailPage({ params }: Props) {
                 <Section>
                   <PricingCard item={item} />
                 </Section>
+
                 <Section>
-                  <ActionButtons
-                  item={item}
-                  userId={user?.id ?? null}
-                  />
+                  <ActionButtons item={item} userId={user?.id ?? null} />
                 </Section>
+
                 <Section>
                   <MobileActionBar price={item.userPrice} itemId={item.itemId} />
                 </Section>
@@ -110,4 +177,42 @@ export default async function ItemDetailPage({ params }: Props) {
       </div>
     </main>
   )
+}
+
+function InfoTile({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  tone: "blue" | "violet" | "gold" | "success" | "warning"
+}) {
+  const toneClass = {
+    blue: "marketplace-attribute-blue",
+    violet: "marketplace-attribute-violet",
+    gold: "marketplace-attribute-gold",
+    success: "marketplace-attribute-success",
+    warning: "marketplace-attribute-warning",
+  }[tone]
+
+  return (
+    <div className={`marketplace-attribute ${toneClass}`}>
+      <span className="marketplace-attribute-icon">{icon}</span>
+
+      <div className="marketplace-attribute-copy">
+        <p className="marketplace-attribute-label">{label}</p>
+        <p className="marketplace-attribute-value">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function formatEnum(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }

@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.Mappers.TradeMapper;
 import smarttrade.backend.dto.trade.*;
+import smarttrade.backend.entities.item.ItemImageEntity;
+import smarttrade.backend.entities.item.ItemImageStatus;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
@@ -13,11 +15,12 @@ import smarttrade.backend.repository.TradeOfferRepo;
 import smarttrade.backend.repository.TradeRepo;
 import smarttrade.backend.repository.ItemRepo;
 import lombok.extern.slf4j.Slf4j;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.repository.UserRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -32,6 +35,13 @@ public class TradeService {
     private final AuthenticatedUserService authenticatedUserService;
     private final TradeMapper tradeMapper;
     private final NotificationService notificationService;
+    private final ChatService chatService;
+
+    private static final String DEFAULT_TRADE_MESSAGE =
+            "Hi! I've sent you a trade offer. Let me know what you think.";
+
+    private static final String DEFAULT_BUY_MESSAGE =
+            "Hi! I've sent you a buy offer for your item.";
 
     @Transactional
     public TradeOfferEntity createTradeOffer(CreateTradeOfferRequest request) {
@@ -92,7 +102,16 @@ public class TradeService {
         log.info("User {} created trade offer {}", currentUser.getEmail(), trade.getTradeId());
 
         TradeOfferEntity savedOffer = tradeOfferRepo.save(offer);
-        System.out.println("repo hit "+savedOffer);
+        System.out.println("repo hit " + savedOffer);
+
+        /*
+         * Every trade offer creates a real chat message.
+         * This also applies to counter-offers, so the conversation
+         * naturally moves to the top of the Messages inbox.
+         */
+        String initialMessage = resolveInitialMessage(request.getInitialMessage(), DEFAULT_TRADE_MESSAGE);
+
+        chatService.sendMessage(receiver.getUserId(), initialMessage);
 
         boolean counter = tradeOfferRepo.countByTrade_TradeId(trade.getTradeId()) > 1;
 
@@ -149,6 +168,10 @@ public class TradeService {
                 .build();
 
         TradeOfferEntity savedOffer = tradeOfferRepo.save(offer);
+
+        String initialMessage = resolveInitialMessage(request.getInitialMessage(), DEFAULT_BUY_MESSAGE);
+
+        chatService.sendMessage(seller.getUserId(), initialMessage);
 
         notificationService.notifyBuyOffer(
                 currentUser,
@@ -486,9 +509,11 @@ public class TradeService {
                         .itemId(item.getItemId())
                         .name(item.getItemName())
                         .imageUrl(
-                                item.getImageUrls().isEmpty()
-                                        ? null
-                                        : item.getImageUrls().getFirst()
+                                item.getImages().stream()
+                                        .filter(image -> image.getStatus() == ItemImageStatus.ACTIVE)
+                                        .min(Comparator.comparing(ItemImageEntity::getSortOrder))
+                                        .map(ItemImageEntity::getSecureUrl)
+                                        .orElse(null)
                         )
                         .userPrice(item.getUserPrice())
                         .systemGeneratedPrice(item.getGeneratedPrice())
@@ -514,5 +539,21 @@ public class TradeService {
         } else {
             trade.setReceiverCompletionConfirmed(true);
         }
+    }
+    private String resolveInitialMessage(String requestedMessage, String defaultMessage) {
+
+        if (requestedMessage == null || requestedMessage.trim().isEmpty()) {
+            return defaultMessage;
+        }
+
+        String message = requestedMessage.trim();
+
+        if (message.length() > 2000) {
+            throw new IllegalArgumentException(
+                    "Initial message cannot exceed 2000 characters."
+            );
+        }
+
+        return message;
     }
 }

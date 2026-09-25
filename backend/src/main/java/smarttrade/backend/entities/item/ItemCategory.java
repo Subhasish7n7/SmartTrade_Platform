@@ -7,9 +7,29 @@ public enum ItemCategory {
     CAMERAS,
     AUDIO,
     MONITORS,
+
     BIKES,
+    CARS,
     WATCHES,
-    COLLECTIBLES,
+
+    FURNITURE,
+    HOME_APPLIANCES,
+    HOME_DECOR,
+    KITCHEN,
+
     BOOKS,
+    CLOTHING,
+    SHOES,
+    BAGS,
+
+    SPORTS,
+    MUSICAL_INSTRUMENTS,
+    TOYS,
+    COLLECTIBLES,
+
+    TOOLS,
+    PET_SUPPLIES,
+    BABY_KIDS,
+
     OTHER
 }

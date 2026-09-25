@@ -7,7 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.dto.auth.LoginRequest;
 import smarttrade.backend.dto.auth.RegisterRequest;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.repository.UserRepo;
 import smarttrade.backend.security.JwtService;
 

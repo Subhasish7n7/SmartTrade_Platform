@@ -11,6 +11,7 @@ import smarttrade.backend.repository.TradeRepo;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,16 @@ public class TradeExpirationScheduler {
 
     private static final int EXPIRATION_DAYS = 14;
 
+    /*
+     * These are the current mock/UI trades.
+     * They must remain active for visual/testing purposes.
+     */
+    private static final Set<Long> MOCK_TRADE_IDS = Set.of(
+            1L,
+            2L,
+            3L
+    );
+
     private final TradeRepo tradeRepo;
     private final NotificationService notificationService;
 
@@ -26,31 +37,48 @@ public class TradeExpirationScheduler {
     @Transactional
     public void expireInactiveTrades() {
 
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(EXPIRATION_DAYS);
+        LocalDateTime cutoff =
+                LocalDateTime.now().minusDays(EXPIRATION_DAYS);
 
-        List<TradeEntity> expired = tradeRepo.findExpiredNegotiations(cutoff);
+        List<TradeEntity> expired =
+                tradeRepo.findExpiredNegotiations(cutoff);
 
         if (expired.isEmpty()) {
             return;
         }
 
-        for (TradeEntity trade : expired) {
+        List<TradeEntity> tradesToExpire = expired.stream()
+                .filter(trade ->
+                        !MOCK_TRADE_IDS.contains(trade.getTradeId())
+                )
+                .toList();
+
+        if (tradesToExpire.isEmpty()) {
+            return;
+        }
+
+        for (TradeEntity trade : tradesToExpire) {
 
             trade.setStatus(TradeStatus.EXPIRED);
 
             notificationService.notifyTradeExpired(
                     trade.getInitiator(),
                     null,
-                    trade.getTradeId());
+                    trade.getTradeId()
+            );
 
             notificationService.notifyTradeExpired(
                     trade.getReceiver(),
                     null,
-                    trade.getTradeId());
+                    trade.getTradeId()
+            );
 
-            log.info("Trade {} expired automatically.", trade.getTradeId());
+            log.info(
+                    "Trade {} expired automatically.",
+                    trade.getTradeId()
+            );
         }
 
-        tradeRepo.saveAll(expired);
+        tradeRepo.saveAll(tradesToExpire);
     }
 }

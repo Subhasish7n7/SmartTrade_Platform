@@ -4,6 +4,9 @@ import lombok.Data;
 
 @Data
 public class CreateBuyRequest {
+
     private Long itemId;
     private Double offeredPrice;
+
+    private String initialMessage;
 }

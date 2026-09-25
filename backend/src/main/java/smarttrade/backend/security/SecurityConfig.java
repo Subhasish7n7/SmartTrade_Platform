@@ -9,7 +9,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -40,20 +39,11 @@ public class SecurityConfig {
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                         .ignoringRequestMatchers(
-                                request -> {
-                                    String path = request.getRequestURI();
-
-                                    return path.startsWith("/ws/")
-                                                    ||
-                                            (HttpMethod.POST.matches(request.getMethod())
-                                            && "/items/search".equals(path))
-                                            ||
-                                            (HttpMethod.POST.matches(request.getMethod())
-                                                    && "/auth/login".equals(path))
-                                            ||
-                                            (HttpMethod.POST.matches(request.getMethod())
-                                                    && "/auth/register".equals(path));
-                                }
+                                "/ws/**",
+                                "/items/search",
+                                "/auth/login",
+                                "/auth/register",
+                                "/items/*/price/refresh"
                         )
                 )
                 .cors(cors -> {})
@@ -90,7 +80,8 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/items/search"
+                                "/items/search",
+                                "/items/*/price/refresh"
                         ).permitAll()
 
                         .anyRequest().authenticated()

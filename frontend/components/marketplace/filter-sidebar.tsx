@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import type { ItemCategory, ItemCondition, ItemSearchFilters, ListingType } from "@/lib/types/api/item"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -13,44 +12,66 @@ import {
   Filter,
   Gamepad2,
   Headphones,
+  Home,
   Laptop,
   Monitor,
   Package,
+  Shirt,
   SlidersHorizontal,
   Smartphone,
-  Watch,
+  Sparkles,
+  Tag,
+  ToyBrick,
+  Wrench,
   X,
 } from "lucide-react"
 import * as React from "react"
 
-const categories: { icon: React.ElementType; label: string; value: ItemCategory }[] = [
-  { icon: Laptop, label: "Computers", value: "COMPUTERS" },
-  { icon: Gamepad2, label: "Gaming", value: "GAMING" },
-  { icon: Camera, label: "Cameras", value: "CAMERAS" },
-  { icon: Smartphone, label: "Phones", value: "PHONES" },
-  { icon: Headphones, label: "Audio", value: "AUDIO" },
-  { icon: Bike, label: "Bikes", value: "BIKES" },
-  { icon: Monitor, label: "Monitors", value: "MONITORS" },
-  { icon: Watch, label: "Watches", value: "WATCHES" },
-  { icon: Gamepad2, label: "Collectibles", value: "COLLECTIBLES" },
-  { icon: BookOpen, label: "Books", value: "BOOKS" },
-  { icon: Package, label: "Other", value: "OTHER" },
-]
+import {
+  ITEM_CATEGORIES,
+  ITEM_CONDITIONS,
+  type ItemCategory,
+  type ItemCondition,
+  type ItemSearchFilters,
+  type ItemSort,
+  type ListingType,
+} from "@/lib/types/api/item"
 
-const conditions: { label: string; value: ItemCondition; color: string }[] = [
-  { label: "New", value: "NEW", color: "text-emerald-400" },
-  { label: "Like New", value: "LIKE_NEW", color: "text-teal-400" },
-  { label: "Good", value: "GOOD", color: "text-amber-400" },
-  { label: "Fair", value: "FAIR", color: "text-orange-400" },
-  { label: "Poor", value: "POOR", color: "text-red-400" },
-]
+const PRICE_MAX = 2_500_000
+const PRICE_STEP = 5_000
 
-const listingTypes = [
+const categoryIcons: Partial<Record<ItemCategory, React.ElementType>> = {
+  PHONES: Smartphone,
+  COMPUTERS: Laptop,
+  GAMING: Gamepad2,
+  CAMERAS: Camera,
+  AUDIO: Headphones,
+  MONITORS: Monitor,
+  BIKES: Bike,
+  BOOKS: BookOpen,
+  HOME_APPLIANCES: Home,
+  HOME_DECOR: Home,
+  TOYS: ToyBrick,
+  TOOLS: Wrench,
+  CLOTHING: Shirt,
+  SHOES: Tag,
+  BAGS: Package,
+  COLLECTIBLES: Sparkles,
+}
+
+const listingTypes: ReadonlyArray<{ label: string; value: ListingType | null }> = [
   { label: "All Listings", value: null },
   { label: "For Sale", value: "SALE" },
   { label: "For Trade", value: "TRADE" },
-  { label: "Both", value: "BOTH" },
-] as const
+]
+
+const sorts: ReadonlyArray<{ label: string; value: ItemSort }> = [
+  { label: "Relevance", value: "RELEVANCE" },
+  { label: "Newest First", value: "NEWEST" },
+  { label: "Price: Low to High", value: "PRICE_LOW_TO_HIGH" },
+  { label: "Price: High to Low", value: "PRICE_HIGH_TO_LOW" },
+  { label: "Distance", value: "DISTANCE" },
+]
 
 const distances = [
   { label: "5 km", value: 5 },
@@ -61,6 +82,24 @@ const distances = [
   { label: "Anywhere", value: null },
 ] as const
 
+const pricePresets = [
+  { label: "₹5K", value: 5_000 },
+  { label: "₹10K", value: 10_000 },
+  { label: "₹25K", value: 25_000 },
+  { label: "₹50K", value: 50_000 },
+  { label: "₹1L", value: 100_000 },
+  { label: "₹2.5L", value: 250_000 },
+  { label: "₹5L", value: 500_000 },
+  { label: "₹10L", value: 1_000_000 },
+  { label: "₹25L", value: 2_500_000 },
+] as const
+
+const categoryItems = ITEM_CATEGORIES.map((value) => ({
+  value,
+  icon: categoryIcons[value] ?? Package,
+  label: formatEnum(value),
+}))
+
 interface FilterPanelProps {
   isOpen: boolean
   onClose: () => void
@@ -70,47 +109,73 @@ interface FilterPanelProps {
 
 export function FilterPanel({ isOpen, onClose, onApply, filters }: FilterPanelProps) {
   const [selectedCategory, setSelectedCategory] = React.useState<ItemCategory | null>(filters.category ?? null)
+
   const [selectedConditions, setSelectedConditions] = React.useState<ItemCondition[]>(filters.conditions ?? [])
+
   const [selectedListingType, setSelectedListingType] = React.useState<ListingType | null>(filters.listingType ?? null)
-  const [selectedDistance, setSelectedDistance] = React.useState<number | null>(filters.radiusKm ?? 25)
-  const [priceRange, setPriceRange] = React.useState([filters.minPrice ?? 0, filters.maxPrice ?? 5000])
+
+  const [selectedSort, setSelectedSort] = React.useState<ItemSort>(filters.sort ?? "RELEVANCE")
+
+  const [selectedDistance, setSelectedDistance] = React.useState<number | null>(filters.radiusKm ?? null)
+
+  const [priceRange, setPriceRange] = React.useState([filters.minPrice ?? 0, filters.maxPrice ?? PRICE_MAX])
+
   const [expandedSections, setExpandedSections] = React.useState({
-    category: true,
-    condition: true,
-    listingType: true,
-    distance: true,
-    price: true,
+    sort: true,
+    category: false,
+    condition: false,
+    listingType: false,
+    distance: false,
+    price: false,
   })
+
   React.useEffect(() => {
     setSelectedCategory(filters.category ?? null)
     setSelectedConditions(filters.conditions ?? [])
     setSelectedListingType(filters.listingType ?? null)
-    setSelectedDistance(filters.radiusKm ?? 25)
-    setPriceRange([filters.minPrice ?? 0, filters.maxPrice ?? 5000])
+    setSelectedSort(filters.sort ?? "RELEVANCE")
+    setSelectedDistance(filters.radiusKm ?? null)
+    setPriceRange([filters.minPrice ?? 0, filters.maxPrice ?? PRICE_MAX])
   }, [filters])
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
+    setExpandedSections((previous) => {
+      const nextOpen = !previous[section]
+
+      return {
+        sort: false,
+        category: false,
+        condition: false,
+        listingType: false,
+        distance: false,
+        price: false,
+        [section]: nextOpen,
+      }
+    })
   }
 
   const toggleCondition = (value: ItemCondition) => {
-    setSelectedConditions((prev) => (prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]))
+    setSelectedConditions((previous) =>
+      previous.includes(value) ? previous.filter((condition) => condition !== value) : [...previous, value],
+    )
   }
 
   const clearFilters = () => {
     setSelectedCategory(null)
     setSelectedConditions([])
     setSelectedListingType(null)
-    setSelectedDistance(25)
-    setPriceRange([0, 5000])
+    setSelectedSort("RELEVANCE")
+    setSelectedDistance(null)
+    setPriceRange([0, PRICE_MAX])
   }
 
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) +
-    selectedConditions.length +
+    (selectedConditions.length ? 1 : 0) +
     (selectedListingType ? 1 : 0) +
-    (selectedDistance !== 25 ? 1 : 0) +
-    (priceRange[0] !== 0 || priceRange[1] !== 5000 ? 1 : 0)
+    (selectedDistance !== null ? 1 : 0) +
+    (priceRange[0] !== 0 || priceRange[1] !== PRICE_MAX ? 1 : 0) +
+    (selectedSort !== "RELEVANCE" ? 1 : 0)
 
   const handleApply = () => {
     onApply({
@@ -118,10 +183,12 @@ export function FilterPanel({ isOpen, onClose, onApply, filters }: FilterPanelPr
       category: selectedCategory ?? undefined,
       conditions: selectedConditions.length ? selectedConditions : undefined,
       listingType: selectedListingType ?? undefined,
-      radiusKm: selectedDistance ?? undefined,
+      sort: selectedSort,
+      radiusKm: selectedDistance === null ? undefined : selectedDistance,
       minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
-      maxPrice: priceRange[1] < 5000 ? priceRange[1] : undefined,
+      maxPrice: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
       page: 0,
+      size: 24,
     })
 
     onClose()
@@ -131,308 +198,271 @@ export function FilterPanel({ isOpen, onClose, onApply, filters }: FilterPanelPr
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 z-50 bg-background/75 backdrop-blur-md"
             onClick={onClose}
           />
 
-          {/* Panel */}
-          <motion.div
+          <motion.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full sm:w-96 max-w-full z-50 flex flex-col bg-background border-l border-border"
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+            }}
+            className="marketplace-filter-drawer"
+            aria-label="Marketplace filters"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="marketplace-filter-header">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Filter className="h-5 w-5 text-primary" />
+                <div className="marketplace-section-icon h-10 w-10 rounded-xl">
+                  <Filter className="h-4 w-4" />
                 </div>
+
                 <div>
                   <h2 className="font-semibold text-foreground">Filters</h2>
+
                   {activeFiltersCount > 0 && <p className="text-xs text-muted-foreground">{activeFiltersCount} active</p>}
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
-                {activeFiltersCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground hover:text-foreground">
-                    Clear all
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" onClick={onClose}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  disabled={activeFiltersCount === 0}
+                  className="marketplace-filter-clear"
+                >
+                  Clear filters
+                </Button>
+
+                <Button variant="ghost" size="icon" onClick={onClose} className="marketplace-filter-close">
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
-              {/* Category */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => toggleSection("category")}
-                  className="flex items-center justify-between w-full text-sm font-medium text-foreground"
-                >
-                  Category
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      expandedSections.category && "rotate-180",
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedSections.category && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+            <div className="marketplace-filter-body scrollbar-thin">
+              <FilterSection title="Sort" expanded={expandedSections.sort} onToggle={() => toggleSection("sort")}>
+                <div className="space-y-2 pt-1">
+                  {sorts.map((sort) => (
+                    <button
+                      key={sort.value}
+                      type="button"
+                      onClick={() => setSelectedSort(sort.value)}
+                      className={cn("marketplace-filter-option", selectedSort === sort.value && "marketplace-filter-option-active")}
                     >
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        {categories.map((cat) => (
-                          <button
-                            key={cat.value}
-                            onClick={() => setSelectedCategory(selectedCategory === cat.value ? null : cat.value)}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all",
-                              selectedCategory === cat.value
-                                ? "bg-primary/20 text-primary border border-primary/30"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent",
-                            )}
-                          >
-                            <cat.icon className="h-4 w-4" />
-                            <span className="truncate">{cat.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                      <span>{sort.label}</span>
 
-              {/* Condition */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => toggleSection("condition")}
-                  className="flex items-center justify-between w-full text-sm font-medium text-foreground"
-                >
-                  Condition
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      expandedSections.condition && "rotate-180",
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedSections.condition && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-2 pt-1">
-                        {conditions.map((condition) => (
-                          <button
-                            key={condition.value}
-                            onClick={() => toggleCondition(condition.value)}
-                            className={cn(
-                              "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-all",
-                              selectedConditions.includes(condition.value)
-                                ? "bg-muted/80 border border-border/80"
-                                : "hover:bg-muted/50 border border-transparent",
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                "h-5 w-5 rounded border-2 flex items-center justify-center transition-colors",
-                                selectedConditions.includes(condition.value) ? "border-primary bg-primary" : "border-muted-foreground",
-                              )}
-                            >
-                              {selectedConditions.includes(condition.value) && (
-                                <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={cn("font-medium", condition.color)}>{condition.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                      {selectedSort === sort.value && <span className="marketplace-filter-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </FilterSection>
 
-              {/* Listing Type */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => toggleSection("listingType")}
-                  className="flex items-center justify-between w-full text-sm font-medium text-foreground"
-                >
-                  Listing Type
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      expandedSections.listingType && "rotate-180",
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedSections.listingType && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {listingTypes.map((type) => (
-                          <button
-                            key={type.value}
-                            onClick={() => setSelectedListingType(type.value)}
-                            className={cn(
-                              "px-4 py-2 rounded-full text-sm font-medium transition-all",
-                              selectedListingType === type.value
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            {type.label}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <FilterSection title="Category" expanded={expandedSections.category} onToggle={() => toggleSection("category")}>
+                <div className="marketplace-filter-category-grid grid grid-cols-2 gap-2 pt-1">
+                  {categoryItems.map((category) => {
+                    const Icon = category.icon
+                    const active = selectedCategory === category.value
 
-              {/* Distance */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => toggleSection("distance")}
-                  className="flex items-center justify-between w-full text-sm font-medium text-foreground"
-                >
-                  Distance
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      expandedSections.distance && "rotate-180",
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedSections.distance && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {distances.map((dist) => (
-                          <button
-                            key={dist.value}
-                            onClick={() => setSelectedDistance(dist.value)}
-                            className={cn(
-                              "px-4 py-2 rounded-full text-sm font-medium transition-all",
-                              selectedDistance === dist.value
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            {dist.label}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    return (
+                      <button
+                        key={category.value}
+                        type="button"
+                        onClick={() => setSelectedCategory(active ? null : category.value)}
+                        className={cn("marketplace-filter-category", active && "marketplace-filter-category-active")}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{category.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </FilterSection>
 
-              {/* Price Range */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => toggleSection("price")}
-                  className="flex items-center justify-between w-full text-sm font-medium text-foreground"
-                >
-                  Price Range
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      expandedSections.price && "rotate-180",
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedSections.price && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+              <FilterSection title="Condition" expanded={expandedSections.condition} onToggle={() => toggleSection("condition")}>
+                <div className="space-y-2 pt-1">
+                  {ITEM_CONDITIONS.map((condition) => {
+                    const active = selectedConditions.includes(condition)
+
+                    return (
+                      <button
+                        key={condition}
+                        type="button"
+                        onClick={() => toggleCondition(condition)}
+                        className={cn("marketplace-filter-option", active && "marketplace-filter-option-active")}
+                      >
+                        <span>{formatEnum(condition)}</span>
+
+                        <span className={cn("marketplace-filter-checkbox", active && "marketplace-filter-checkbox-active")}>
+                          {active ? "✓" : ""}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </FilterSection>
+
+              <FilterSection title="Listing type" expanded={expandedSections.listingType} onToggle={() => toggleSection("listingType")}>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {listingTypes.map((type) => (
+                    <button
+                      key={type.label}
+                      type="button"
+                      onClick={() => setSelectedListingType(type.value)}
+                      className={cn("marketplace-filter-pill", selectedListingType === type.value && "marketplace-filter-pill-active")}
                     >
-                      <div className="space-y-4 pt-2">
-                        <Slider value={priceRange} onValueChange={setPriceRange} max={5000} step={50} className="w-full" />
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground font-medium">
-                            ${priceRange[0].toLocaleString()}
-                          </span>
-                          <span className="text-muted-foreground">to</span>
-                          <span className="px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground font-medium">
-                            ${priceRange[1].toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                      {type.value === null ? "All" : type.value === "SALE" ? "Sale" : "Trade"}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                  Sale includes listings that support both sale and trade. Trade works the same way.
+                </p>
+              </FilterSection>
+
+              <FilterSection title="Distance" expanded={expandedSections.distance} onToggle={() => toggleSection("distance")}>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {distances.map((distance) => (
+                    <button
+                      key={distance.label}
+                      type="button"
+                      onClick={() => setSelectedDistance(distance.value)}
+                      className={cn("marketplace-filter-pill", selectedDistance === distance.value && "marketplace-filter-pill-active")}
+                    >
+                      {distance.label}
+                    </button>
+                  ))}
+                </div>
+              </FilterSection>
+
+              <FilterSection title="Price range" expanded={expandedSections.price} onToggle={() => toggleSection("price")}>
+                <div className="space-y-4 pt-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {pricePresets.map((preset) => {
+                      const active = priceRange[1] === preset.value && priceRange[0] === 0
+
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setPriceRange([0, preset.value])}
+                          className={cn("marketplace-filter-price-preset", active && "marketplace-filter-price-preset-active")}
+                        >
+                          {preset.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <Slider value={priceRange} onValueChange={setPriceRange} min={0} max={PRICE_MAX} step={PRICE_STEP} className="w-full" />
+
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="marketplace-filter-value">₹{formatIndianNumber(priceRange[0])}</span>
+
+                    <span className="text-muted-foreground">to</span>
+
+                    <span className="marketplace-filter-value">₹{formatIndianNumber(priceRange[1])}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>₹0</span>
+                    <span>₹25,00,000+</span>
+                  </div>
+                </div>
+              </FilterSection>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-border bg-background">
-              <Button
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl"
-                onClick={handleApply}
-              >
-                Show Results
+            <div className="marketplace-filter-footer">
+              <Button className="cta-primary h-12 w-full rounded-xl font-semibold" onClick={handleApply}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Show results
               </Button>
             </div>
-          </motion.div>
+          </motion.aside>
         </>
       )}
     </AnimatePresence>
   )
 }
 
-// Floating Filter Button - used across all screen sizes
+function FilterSection({
+  title,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string
+  expanded: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <section className="marketplace-filter-section">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between text-left text-sm font-semibold text-foreground"
+      >
+        {title}
+
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  )
+}
+
 export function FloatingFilterButton({ onClick, activeCount }: { onClick: () => void; activeCount: number }) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-6 right-6 z-40">
-      <Button onClick={onClick} size="lg" className="cta-primary h-14 px-6 rounded-2xl font-medium">
-        <SlidersHorizontal className="h-5 w-5 mr-2" />
+      <Button
+        onClick={onClick}
+        size="lg"
+        className="cta-primary h-14 rounded-2xl px-6 font-semibold shadow-[0_16px_40px_var(--marketplace-filter-shadow)]"
+      >
+        <SlidersHorizontal className="mr-2 h-5 w-5" />
         Filters
         {activeCount > 0 && (
-          <span className="ml-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+          <span className="ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border border-foreground/15 bg-background/20 px-1.5 text-xs font-bold text-primary-foreground">
             {activeCount}
           </span>
         )}
       </Button>
     </motion.div>
   )
+}
+
+function formatEnum(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function formatIndianNumber(value: number) {
+  return value.toLocaleString("en-IN")
 }

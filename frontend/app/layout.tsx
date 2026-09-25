@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import "./globals.css"
+import "./(marketplace)/marketplace.css"
 import { Providers } from "./providers"
 
 const geist = Geist({ 

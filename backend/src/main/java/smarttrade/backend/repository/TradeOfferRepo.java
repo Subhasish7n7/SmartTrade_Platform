@@ -11,9 +11,13 @@ import java.util.Optional;
 
 @Repository
 public interface TradeOfferRepo extends JpaRepository<TradeOfferEntity, Long> {
+
     Optional<TradeOfferEntity> findTopByTrade_TradeIdOrderByCreatedAtDesc(Long tradeId);
+
     List<TradeOfferEntity> findByTrade_TradeId(Long tradeId);
+
     List<TradeOfferEntity> findByTrade_TradeIdOrderByCreatedAtAsc(Long tradeId);
+
     @Query("""
     SELECT new smarttrade.backend.dto.trade.TradeHistoryResponse(
         t.id,
@@ -29,5 +33,9 @@ public interface TradeOfferRepo extends JpaRepository<TradeOfferEntity, Long> {
     List<TradeHistoryResponse> findTradeHistoryByTradeId(Long tradeId);
 
     long countByTrade_TradeId(Long tradeId);
-}
 
+    List<TradeOfferEntity> findBySender_UserIdOrReceiver_UserId(
+            Long senderId,
+            Long receiverId
+    );
+}

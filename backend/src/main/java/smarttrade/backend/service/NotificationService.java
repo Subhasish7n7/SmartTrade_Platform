@@ -10,15 +10,13 @@ import smarttrade.backend.Mappers.NotificationMapper;
 import smarttrade.backend.dto.notification.NotificationCountResponse;
 import smarttrade.backend.dto.notification.NotificationResponse;
 import smarttrade.backend.dto.notification.NotificationWebsocketResponse;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.entities.notification.NotificationEntity;
 import smarttrade.backend.entities.notification.NotificationResourceType;
 import smarttrade.backend.entities.notification.NotificationType;
 import smarttrade.backend.repository.NotificationRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
-
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor

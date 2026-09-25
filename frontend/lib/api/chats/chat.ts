@@ -1,35 +1,33 @@
-import { ChatMessageRequest ,ChatConversationResponse,ChatMessageResponse, PinTradeRequest } from "@/lib/types/api/chat";
+import { stompClient } from "@/lib/api/configs/websocket"
+import { ChatConversationResponse, ChatMessageRequest, ChatMessageResponse, PinTradeRequest } from "@/lib/types/api/chat"
+import { PageResponse } from "@/lib/types/api/page"
 import { clientApi as api } from "../configs/client"
-import { stompClient } from "@/lib/api/configs/websocket";
-import { PageResponse } from "@/lib/types/api/page";
 
-export function sendChatMessage( {otherUserId, message}:ChatMessageRequest) {
-    if (!stompClient.connected) {
-        throw new Error("WebSocket not connected");
-    }
-
-    stompClient.publish({
-        destination: "/app/chat.send",
-        body: JSON.stringify({ otherUserId, message,}),
-    });
-}
-export function sendPresence(conversationId: number) {
-    if (!stompClient.connected) {
-      return
-    }
-
-    stompClient.publish({
-      destination: "/app/chat.presence",
-      body: JSON.stringify({
-        conversationId,
-      }),
-    })
+export function sendChatMessage({ otherUserId, message }: ChatMessageRequest) {
+  if (!stompClient.connected) {
+    throw new Error("WebSocket not connected")
   }
 
-export async function getMessages( otherUserId:number,page=0,size=40){
+  stompClient.publish({
+    destination: "/app/chat.send",
+    body: JSON.stringify({ otherUserId, message }),
+  })
+}
+export function sendPresence(conversationId: number | null) {
+  if (!conversationId || !stompClient.connected) {
+    return
+  }
 
-  const response = await api.get<PageResponse<ChatMessageResponse>>
-                    (`/chat/${otherUserId}/messages?page=${page}&size=${size}`)
+  stompClient.publish({
+    destination: "/app/chat.presence",
+    body: JSON.stringify({
+      conversationId,
+    }),
+  })
+}
+
+export async function getMessages(otherUserId: number, page = 0, size = 40) {
+  const response = await api.get<PageResponse<ChatMessageResponse>>(`/chat/${otherUserId}/messages?page=${page}&size=${size}`)
   return response.data
 }
 export async function getInbox() {
@@ -38,7 +36,7 @@ export async function getInbox() {
   return response.data
 }
 
-export async function pinTrade(otherUserId:number, payload:PinTradeRequest) {
-  const response = await api.put(`/chat/${otherUserId}/pin`,payload)
+export async function pinTrade(otherUserId: number, payload: PinTradeRequest) {
+  const response = await api.put(`/chat/${otherUserId}/pin`, payload)
   return response.data
 }

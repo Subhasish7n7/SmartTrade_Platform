@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import smarttrade.backend.entities.item.ItemEntity;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;

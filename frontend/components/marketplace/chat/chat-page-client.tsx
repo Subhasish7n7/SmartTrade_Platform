@@ -87,7 +87,7 @@ export function ChatPageClient({ currentUserId }: Props) {
     const unsubscribeConnection = onWebSocketConnected(() => {
       subscribeToChat((event) => {
         setConversations((previous) => {
-          const existingIndex = previous.findIndex((conversation) => conversation.conversationId === event.conversation.conversationId)
+          const existingIndex = previous.findIndex((conversation) => conversation.otherUserId === event.conversation.otherUserId)
 
           if (existingIndex === -1) {
             return [event.conversation, ...previous]
@@ -101,11 +101,23 @@ export function ChatPageClient({ currentUserId }: Props) {
 
         const selected = selectedConversationRef.current
 
-        if (selected?.conversationId === event.conversation.conversationId) {
+        if (selected && selected.otherUserId === event.conversation.otherUserId) {
+          /*
+           * If this was a legacy entry with no conversationId,
+           * the backend has now created the real conversation.
+           *
+           * Replace the selected conversation with the real one
+           * returned by the WebSocket event.
+           */
+          if (selected.conversationId !== event.conversation.conversationId) {
+            setSelectedConversation(event.conversation)
+          }
+
           setMessages((previous) => [...previous, event.message])
         }
       })
     })
+
     return () => {
       unsubscribeConnection()
       unsubscribeFromChat()
@@ -141,6 +153,18 @@ export function ChatPageClient({ currentUserId }: Props) {
 
     setOtherUserOnline(false)
 
+    /*
+     * Legacy offer entry without a conversation:
+     * there is no conversation presence to subscribe to yet.
+     *
+     * Once the first real message is sent, the backend returns
+     * a real conversationId through the WebSocket event, which
+     * updates selectedConversation and causes this effect to run again.
+     */
+    if (selectedConversation.conversationId === null) {
+      return
+    }
+
     const unsubscribeConnection = onWebSocketConnected(() => {
       sendPresence(selectedConversation.conversationId)
     })
@@ -159,8 +183,9 @@ export function ChatPageClient({ currentUserId }: Props) {
   const handleSend = async (content: string) => {
     if (!selectedConversation) return
     sendChatMessage({
-      otherUserId:selectedConversation.otherUserId,
-       message:content})
+      otherUserId: selectedConversation.otherUserId,
+      message: content,
+    })
   }
 
   return (

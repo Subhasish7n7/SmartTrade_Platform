@@ -2,30 +2,32 @@ package smarttrade.backend.entities.item;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.*;
 import org.locationtech.jts.geom.Point;
-import smarttrade.backend.entities.UserEntity;
-
+import smarttrade.backend.entities.user.UserEntity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Builder
-@Table(name="items")
+@Table(name = "items")
 public class ItemEntity {
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
-    @Column(name= "item_id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "item_id")
     private Long itemId;
 
-    @Column(name = "item_name")
+    @NotBlank
+    @Column(nullable = false)
     private String itemName;
 
     @Column(name = "item_new_price")
@@ -34,35 +36,60 @@ public class ItemEntity {
     @Column(name = "item_generated_price")
     private Integer generatedPrice;
 
-    @Column(name = "item_user_price")
+    @NotNull
+    @Positive
+    @Column(name = "item_user_price", nullable = false)
     private Integer userPrice;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_status", nullable = false)
+    @Builder.Default
+    private ItemPricingStatus pricingStatus = ItemPricingStatus.PENDING;
+
+    @Column(name = "price_fetched_at")
+    private LocalDateTime priceFetchedAt;
+
+    @Column(name = "pricing_error_code", length = 100)
+    private String pricingErrorCode;
+
+    @Column(name = "pricing_error_message", columnDefinition = "TEXT")
+    private String pricingErrorMessage;
+
+    @Column(name = "pricing_version", nullable = false)
+    @Builder.Default
+    private Long pricingVersion = 0L;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
     private UserEntity user;
 
-    private String description;              // Item description
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ItemCategory category;                 // Category (e.g., electronics, books)
+    private ItemCategory category;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ItemCondition condition;                // "new", "used - like new", "used - good", etc.
+    private ItemCondition condition;
 
     @ElementCollection
     @CollectionTable(name = "item_labels", joinColumns = @JoinColumn(name = "item_id"))
     @Column(name = "label")
-    private List<String> labels;             // Keywords, e.g., ["gaming", "intel", "DDR4"]
+    private List<String> labels;
 
     @Column(name = "custom_category")
     private String customCategory;
 
-    @ElementCollection
-    @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
-    @Column(name = "image_url")
-    private List<String> imageUrls;
+    @OneToMany(
+            mappedBy = "item",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            orphanRemoval = false
+    )
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<ItemImageEntity> images = new ArrayList<>();
 
     @JsonIgnore
     @Column(columnDefinition = "geography(Point,4326)")
@@ -78,24 +105,30 @@ public class ItemEntity {
     private String locality;
 
     @Column(name = "is_for_sale")
+    @Builder.Default
     private boolean forSale = true;
 
     @Column(name = "is_for_trade")
+    @Builder.Default
     private boolean forTrade = false;
 
     @Column(name = "is_available")
-    private boolean available = true;    // Mark item as available/traded
+    @Builder.Default
+    private boolean available = true;
 
     @Column(name = "is_sold")
+    @Builder.Default
     private boolean sold = false;
 
     @Column(name = "is_traded")
+    @Builder.Default
     private boolean traded = false;
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
     @Column(name = "is_locked")
+    @Builder.Default
     private boolean locked = false;
 
     @Column(name = "locked_by_trade")
@@ -106,6 +139,4 @@ public class ItemEntity {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-
-
 }

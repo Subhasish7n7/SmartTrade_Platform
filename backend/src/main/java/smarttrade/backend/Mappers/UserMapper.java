@@ -5,7 +5,7 @@ import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.dto.auth.CurrentUserResponse;
 import smarttrade.backend.dto.user.MyUserProfileResponse;
 import smarttrade.backend.dto.user.PublicUserProfileResponse;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 
 @Component
 public class UserMapper {
@@ -46,7 +46,11 @@ public class UserMapper {
                 .name(currentUser.getName())
                 .email(currentUser.getEmail())
                 .phoneNo(currentUser.getPhone_no())
-                .avatarUrl(currentUser.getAvatarUrl())
+                .avatarUrl(
+                        currentUser.getAvatar() != null
+                                ? currentUser.getAvatar().getSecureUrl()
+                                : null
+                )
                 .build();
     }
 
@@ -56,7 +60,9 @@ public class UserMapper {
         return new PublicUserProfileResponse(
                 user.getUserId(),
                 user.getName(),
-                user.getAvatarUrl(),
+                user.getAvatar() != null
+                        ? user.getAvatar().getSecureUrl()
+                        : null,
                 user.getTrustScore(),
                 user.getTotalListings(),
                 user.getSuccessfulTrades()
@@ -71,7 +77,9 @@ public class UserMapper {
                 user.getName(),
                 user.getEmail(),
                 user.getPhone_no(),
-                user.getAvatarUrl(),
+                user.getAvatar() != null
+                        ? user.getAvatar().getSecureUrl()
+                        : null,
                 user.getTrustScore(),
                 user.getTotalListings(),
                 user.getSuccessfulTrades()

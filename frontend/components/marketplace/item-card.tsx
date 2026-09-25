@@ -47,7 +47,7 @@ export function MarketplaceItemCard({item, isWishlisted = false, onWishlistToggl
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-muted/30">
         <Image
-          src={item.imageUrls?.[0] ?? "/placeholder.jpg"}
+          src={item.images?.[0]?.secureUrl ?? "/placeholder.jpg"}
           alt={item.itemName}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-110"

@@ -7,12 +7,31 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import smarttrade.backend.entities.item.ItemEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ItemRepo extends JpaRepository<ItemEntity, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from ItemEntity i where i.itemId = :itemId")
+    Optional<ItemEntity> findByIdForUpdate(@Param("itemId") Long itemId);
+
+    @Query(
+            value = """
+        SELECT i.*
+        FROM items i
+        WHERE i.is_available = true
+          AND (i.is_for_sale = true OR i.is_for_trade = true)
+        ORDER BY i.created_at DESC
+        """,
+            nativeQuery = true
+    )
+    List<ItemEntity> findRecentMarketplaceItems(Pageable pageable);
 
     @Query(
             value = """
@@ -358,6 +377,18 @@ public interface ItemRepo extends JpaRepository<ItemEntity, Long> {
 
     List<ItemEntity> findByUser_UserId(
             Long userId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select i
+        from ItemEntity i
+        where i.itemId = :itemId
+          and i.user.userId = :userId
+    """)
+    Optional<ItemEntity> findByItemIdAndUser_UserIdForUpdate(
+            @Param("itemId") Long itemId,
+            @Param("userId") Long userId
     );
 
     @Query("""

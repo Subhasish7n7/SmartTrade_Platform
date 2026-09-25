@@ -13,11 +13,13 @@ import smarttrade.backend.dto.item.*;
 import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemCondition;
+import smarttrade.backend.entities.item.ItemPricingStatus;
 import smarttrade.backend.events.ItemPersistedEvent;
 import smarttrade.backend.exceptions.ForbiddenOperationException;
 import smarttrade.backend.repository.ItemRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
+import smarttrade.backend.service.pricing.*;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,15 +31,28 @@ import java.util.Optional;
 public class ItemService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    private static final int ENTRY_RECENT_ITEM_LIMIT = 20;
 
     private final ItemRepo itemRepo;
     private final ItemMapper itemMapper;
     private final AuthenticatedUserService authenticatedUserService;
     private final PriceEstimationService priceEstimationService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final PricingJobService pricingJobService;
+    private final PricingBackgroundService pricingBackgroundService;
+    private final ItemImageService itemImageService;
 
     public List<ItemEntity> GetAllItems() {
         return itemRepo.findAll();
+    }
+
+    public List<ItemEntity> getRecentMarketplaceItems(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        return itemRepo.findRecentMarketplaceItems(pageable);
     }
 
     public List<ItemEntity> getInventory(Long userId) {
@@ -58,6 +73,13 @@ public class ItemService {
 
         validateCategory(item);
 
+        if (item.getPricingVersion() == null
+                || item.getPricingVersion() <= 0L) {
+            item.setPricingVersion(1L);
+        }
+
+        item.setPricingStatus(ItemPricingStatus.PENDING);
+
         log.info(
                 "User {} creating item {}",
                 currentUser.getEmail(),
@@ -67,15 +89,7 @@ public class ItemService {
         ItemEntity savedItem = itemRepo.save(item);
 
         applicationEventPublisher.publishEvent(
-                new ItemPersistedEvent(
-                        savedItem.getItemId(),
-                        savedItem.getItemName(),
-                        savedItem.getCategory(),
-                        savedItem.getCustomCategory(),
-                        savedItem.getLabels() == null
-                                ? List.of()
-                                : List.copyOf(savedItem.getLabels())
-                )
+                new ItemPersistedEvent(savedItem.getItemId())
         );
 
         return savedItem;
@@ -86,7 +100,7 @@ public class ItemService {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
 
-        ItemEntity existingItem = itemRepo.findByItemIdAndUser_UserId(itemId, currentUser.getUserId())
+        ItemEntity existingItem = itemRepo.findByItemIdAndUser_UserIdForUpdate(itemId, currentUser.getUserId())
                 .orElseThrow(() -> new ForbiddenOperationException("Item not owned by user"));
 
         ItemCondition previousCondition = existingItem.getCondition();
@@ -101,6 +115,12 @@ public class ItemService {
         itemMapper.updateEntityFromRequest(request, existingItem);
 
         validateCategory(existingItem);
+
+        itemImageService.applyUpdateImages(
+                existingItem,
+                request.getImages(),
+                request.getRemovedImageIds()
+        );
         boolean pricingInputsChanged =
                 !Objects.equals(
                         previousItemName,
@@ -120,6 +140,28 @@ public class ItemService {
                                 ? List.of()
                                 : existingItem.getLabels()
                 );
+        if (pricingInputsChanged) {
+
+            long currentVersion =
+                    existingItem.getPricingVersion() == null
+                            ? 0L
+                            : existingItem.getPricingVersion();
+
+            existingItem.setPricingVersion(
+                    currentVersion + 1L
+            );
+
+            /*
+             * PricingVersion belongs to the listing's pricing inputs, not
+             * to individual jobs. An in-flight older job becomes stale.
+             */
+            existingItem.setPricingStatus(
+                    ItemPricingStatus.PENDING
+            );
+
+            existingItem.setPricingErrorCode(null);
+            existingItem.setPricingErrorMessage(null);
+        }
 
 
         if (existingItem.getCondition() != previousCondition) {
@@ -142,19 +184,23 @@ public class ItemService {
 
         if (pricingInputsChanged) {
             applicationEventPublisher.publishEvent(
-                    new ItemPersistedEvent(
-                            savedItem.getItemId(),
-                            savedItem.getItemName(),
-                            savedItem.getCategory(),
-                            savedItem.getCustomCategory(),
-                            savedItem.getLabels() == null
-                                    ? List.of()
-                                    : List.copyOf(savedItem.getLabels())
-                    )
+                    new ItemPersistedEvent(savedItem.getItemId())
             );
         }
 
         return savedItem;
+    }
+    public PricingRefreshResponse refreshItemPrice(Long itemId) {
+
+        PricingJobDecision decision = pricingJobService.requestRefresh(itemId);
+
+        if (decision.job() != null) {
+            pricingBackgroundService.execute(
+                    decision.job()
+            );
+        }
+
+        return decision.response();
     }
 
     @Transactional
@@ -170,6 +216,8 @@ public class ItemService {
                 currentUser.getEmail(),
                 itemId
         );
+
+        itemImageService.markAllImagesForDeletion(item);
 
         itemRepo.delete(item);
     }

@@ -8,7 +8,7 @@ import smarttrade.backend.Mappers.UserMapper;
 import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.dto.user.MyUserProfileResponse;
 import smarttrade.backend.dto.user.PublicUserProfileResponse;
-import smarttrade.backend.entities.UserEntity;
+import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.service.UserService;
 

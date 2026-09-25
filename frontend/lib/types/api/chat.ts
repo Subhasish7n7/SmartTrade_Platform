@@ -19,12 +19,12 @@ export interface ChatMessageRequest{
     message:string
 }
 export interface ChatConversationResponse {
-  conversationId: number
+  conversationId: number | null
   otherUserId: number
   otherUserName: string
-  avatarUrl?: string
-  lastMessage: string
-  lastMessageAt: string
+  avatarUrl?: string | null
+  lastMessage: string | null
+  lastMessageAt: string | null
   unreadCount: number
   activeTradeCount: number
   pinnedTradeId?: number | null

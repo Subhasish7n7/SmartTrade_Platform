@@ -6,7 +6,6 @@ import SockJS from "sockjs-client"
 import { API_BASE_URL } from "@/lib/config"
 
 type ConnectionListener = () => void
-
 const connectionListeners = new Set<ConnectionListener>()
 
 export const stompClient = new Client({

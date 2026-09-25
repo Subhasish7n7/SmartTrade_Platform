@@ -11,20 +11,20 @@ import smarttrade.backend.dto.chat.ChatConversationResponse;
 import smarttrade.backend.dto.chat.ChatEvent;
 import smarttrade.backend.dto.chat.ChatEventType;
 import smarttrade.backend.dto.chat.ChatMessageResponse;
-import smarttrade.backend.entities.*;
 import smarttrade.backend.entities.chat.ChatConversationEntity;
 import smarttrade.backend.entities.chat.ChatMessageEntity;
 import smarttrade.backend.entities.trade.TradeEntity;
-import smarttrade.backend.repository.ChatConversationRepo;
-import smarttrade.backend.repository.ChatMessageRepo;
-import smarttrade.backend.repository.TradeRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.entities.trade.TradeOfferEntity;
+import smarttrade.backend.entities.user.UserEntity;
+import smarttrade.backend.repository.*;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
 import smarttrade.backend.websocket.ChatPresencePublisher;
 
-import java.util.Comparator;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -41,6 +41,7 @@ public class ChatService {
     private final ActiveConversationRegistry activeConversationRegistry;
     private final ChatMapper chatMapper;
     private final ChatPresencePublisher presencePublisher;
+    private final TradeOfferRepo tradeOfferRepo;
 
     private ChatConversationEntity getOrCreateConversation(UserEntity user1, UserEntity user2) {
 
@@ -61,6 +62,7 @@ public class ChatService {
                     );
                 });
     }
+
     public void updatePresence(String sessionId, Long conversationId) {
 
         UserEntity current = authenticatedUserService.getCurrentUser();
@@ -102,48 +104,214 @@ public class ChatService {
             );
         }
     }
+
     public List<ChatConversationResponse> getInbox() {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
+        Long currentUserId = currentUser.getUserId();
+
+        Map<Long, ChatConversationResponse> responsesByUser = new HashMap<>();
+        Map<Long, LocalDateTime> activityByUser = new HashMap<>();
+
+        /*
+         * 1. Existing conversations.
+         */
         List<ChatConversationEntity> conversations =
                 conversationRepo.findByUser1_UserIdOrUser2_UserId(
-                        currentUser.getUserId(), currentUser.getUserId());
+                        currentUserId,
+                        currentUserId
+                );
 
-        return conversations.stream()
-                .map(conversation -> {
-                    ChatMessageEntity lastMessage = chatMessageRepo
-                            .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
-                                    .orElse(null);
+        for (ChatConversationEntity conversation : conversations) {
 
-                    UserEntity otherUser = conversation.getUser1()
-                                    .getUserId()
-                                    .equals(currentUser.getUserId())
-                                    ?
-                                    conversation.getUser2()
-                                    :
-                                    conversation.getUser1();
+            ChatMessageEntity lastMessage = chatMessageRepo
+                    .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
+                    .orElse(null);
 
-                    Integer activeTradeCount = tradeRepo
-                            .countActiveTradesBetweenUsers(currentUser.getUserId(), otherUser.getUserId());
+            UserEntity otherUser =
+                    conversation.getUser1().getUserId().equals(currentUserId)
+                            ? conversation.getUser2()
+                            : conversation.getUser1();
 
-                    Integer unreadCount = getUnreadCount(conversation, currentUser);
+            Integer activeTradeCount =
+                    tradeRepo.countActiveTradesBetweenUsers(
+                            currentUserId,
+                            otherUser.getUserId()
+                    );
 
-                    return chatMapper.toConversationResponse(
+            Integer unreadCount =
+                    getUnreadCount(conversation, currentUser);
+
+            ChatConversationResponse response =
+                    chatMapper.toConversationResponse(
                             conversation,
                             currentUser,
                             lastMessage,
                             activeTradeCount,
                             unreadCount
                     );
-                })
+
+            Long otherUserId = otherUser.getUserId();
+
+            responsesByUser.put(otherUserId, response);
+
+            /*
+             * Normal chat activity is determined by the latest real message.
+             * If a legacy conversation somehow has no message, use the
+             * conversation creation time as a safe fallback.
+             */
+            LocalDateTime activityTime =
+                    lastMessage != null
+                            ? lastMessage.getCreatedAt()
+                            : conversation.getCreatedAt();
+
+            activityByUser.put(otherUserId, activityTime);
+        }
+
+        /*
+         * 2. Trade/buy-offer participants.
+         *
+         * Both normal trade offers and buy offers are TradeOfferEntity,
+         * so one query covers both.
+         */
+
+        List<TradeOfferEntity> offers =
+                tradeOfferRepo.findBySender_UserIdOrReceiver_UserId(
+                        currentUserId,
+                        currentUserId
+                );
+
+        /*
+         * Keep only the latest offer for each user pair.
+         * This is mainly important for legacy offers that may not have
+         * created a conversation/message.
+         */
+        Map<Long, TradeOfferEntity> latestOfferByUser = new HashMap<>();
+
+        for (TradeOfferEntity offer : offers) {
+
+            Long otherUserId =
+                    offer.getSender().getUserId().equals(currentUserId)
+                            ? offer.getReceiver().getUserId()
+                            : offer.getSender().getUserId();
+
+            TradeOfferEntity existing = latestOfferByUser.get(otherUserId);
+
+            if (existing == null
+                    || offer.getCreatedAt().isAfter(existing.getCreatedAt())) {
+
+                latestOfferByUser.put(otherUserId, offer);
+            }
+        }
+
+        for (Map.Entry<Long, TradeOfferEntity> entry : latestOfferByUser.entrySet()) {
+
+            Long otherUserId = entry.getKey();
+            TradeOfferEntity latestOffer = entry.getValue();
+
+            LocalDateTime offerActivity = latestOffer.getCreatedAt();
+
+            /*
+             * The normal/new case:
+             *
+             * createTradeOffer/createBuyOffer now creates a chat message,
+             * so this participant already exists in responsesByUser.
+             *
+             * We only need the offer timestamp as a fallback for legacy
+             * records that somehow have no conversation/message.
+             */
+            if (responsesByUser.containsKey(otherUserId)) {
+
+                LocalDateTime currentActivity = activityByUser.get(otherUserId);
+
+                if (currentActivity == null
+                        || offerActivity.isAfter(currentActivity)) {
+
+                    /*
+                     * Legacy safety:
+                     * if an offer exists later than the latest message,
+                     * use the offer as the ordering activity.
+                     *
+                     * For all newly-created offers the message timestamp
+                     * and offer timestamp will naturally be almost identical.
+                     */
+                    activityByUser.put(otherUserId, offerActivity);
+                }
+
+                continue;
+            }
+
+            /*
+             * Legacy offer with no ChatConversation / ChatMessage.
+             *
+             * Do NOT create a fake conversation here.
+             * The frontend can still show the user and let them open
+             * the chat. The first real message will create the
+             * conversation through ChatService.sendMessage().
+             */
+            UserEntity otherUser =
+                    latestOffer.getSender().getUserId().equals(currentUserId)
+                            ? latestOffer.getReceiver()
+                            : latestOffer.getSender();
+
+            Integer activeTradeCount =
+                    tradeRepo.countActiveTradesBetweenUsers(
+                            currentUserId,
+                            otherUserId
+                    );
+
+            ChatConversationResponse response =
+                    ChatConversationResponse.builder()
+                            .conversationId(null)
+                            .otherUserId(otherUser.getUserId())
+                            .otherUserName(otherUser.getName())
+                            .avatarUrl(
+                                    otherUser.getAvatar() != null
+                                            ? otherUser.getAvatar().getSecureUrl()
+                                            : null
+                            )
+                            .lastMessage(null)
+                            .lastMessageAt(offerActivity)
+                            .unreadCount(0)
+                            .activeTradeCount(activeTradeCount)
+                            .pinnedTradeId(null)
+                            .build();
+
+            responsesByUser.put(otherUserId, response);
+            activityByUser.put(otherUserId, offerActivity);
+        }
+
+        /*
+         * 3. One inbox entry per user.
+         *
+         * Latest activity always comes first.
+         */
+        return responsesByUser.entrySet()
+                .stream()
                 .sorted(
-                        Comparator.comparing(
-                                ChatConversationResponse::getLastMessageAt,
-                                Comparator.nullsLast(
-                                        Comparator.reverseOrder()
-                                )
-                        )
+                        (left, right) -> {
+                            LocalDateTime leftActivity =
+                                    activityByUser.get(left.getKey());
+
+                            LocalDateTime rightActivity =
+                                    activityByUser.get(right.getKey());
+
+                            if (leftActivity == null && rightActivity == null) {
+                                return 0;
+                            }
+
+                            if (leftActivity == null) {
+                                return 1;
+                            }
+
+                            if (rightActivity == null) {
+                                return -1;
+                            }
+
+                            return rightActivity.compareTo(leftActivity);
+                        }
                 )
+                .map(Map.Entry::getValue)
                 .toList();
     }
 
@@ -165,7 +333,7 @@ public class ChatService {
         chatMessage = chatMessageRepo.save(chatMessage);
 
         ChatMessageResponse response = chatMapper.toMessageResponse(chatMessage);
-        Integer activeTradeCount= tradeRepo
+        Integer activeTradeCount = tradeRepo
                 .countActiveTradesBetweenUsers(currentUser.getUserId(), otherUser.getUserId());
 
 
@@ -178,9 +346,9 @@ public class ChatService {
                 chatMapper.toConversationResponse(
                         conversation, currentUser, chatMessage, activeTradeCount, 0);
 
-        ChatEvent receiverEvent = createChatEvent(response,receiverConversation);
+        ChatEvent receiverEvent = createChatEvent(response, receiverConversation);
 
-        ChatEvent senderEvent = createChatEvent(response,senderConversation);
+        ChatEvent senderEvent = createChatEvent(response, senderConversation);
 
         messagingTemplate.convertAndSendToUser(
                 otherUser.getEmail(),
@@ -240,12 +408,12 @@ public class ChatService {
                 new IllegalArgumentException("Trade not found"));
 
         boolean validTrade = (trade.getInitiator().getUserId().equals(currentUser.getUserId())
-                             &&
-                             trade.getReceiver().getUserId().equals(otherUser.getUserId()))
-                             ||
-                             (trade.getInitiator().getUserId().equals(otherUser.getUserId())
-                                    &&
-                             trade.getReceiver().getUserId().equals(currentUser.getUserId()));
+                &&
+                trade.getReceiver().getUserId().equals(otherUser.getUserId()))
+                ||
+                (trade.getInitiator().getUserId().equals(otherUser.getUserId())
+                        &&
+                        trade.getReceiver().getUserId().equals(currentUser.getUserId()));
 
         if (!validTrade) {
             throw new IllegalArgumentException(
@@ -255,12 +423,13 @@ public class ChatService {
         conversation.setPinnedTrade(trade);
         conversationRepo.save(conversation);
     }
+
     @Transactional
     public void markConversationRead(ChatConversationEntity conversation, UserEntity currentUser) {
 
         ChatMessageEntity latest = chatMessageRepo
                 .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
-                        .orElse(null);
+                .orElse(null);
 
         if (latest == null) {
             return;
@@ -276,6 +445,7 @@ public class ChatService {
 
         conversationRepo.save(conversation);
     }
+
     private Integer getUnreadCount(ChatConversationEntity conversation, UserEntity currentUser) {
 
         Long lastReadId = null;
@@ -300,7 +470,8 @@ public class ChatService {
                 lastReadId
         );
     }
-    private ChatEvent createChatEvent(ChatMessageResponse message, ChatConversationResponse conversation){
+
+    private ChatEvent createChatEvent(ChatMessageResponse message, ChatConversationResponse conversation) {
         return ChatEvent.builder()
                 .type(ChatEventType.MESSAGE_CREATED)
                 .conversation(conversation)
@@ -308,6 +479,7 @@ public class ChatService {
                 .build();
 
     }
+
     private Optional<ChatConversationEntity> findConversation(UserEntity user1, UserEntity user2) {
 
         Long first = Math.min(user1.getUserId(), user2.getUserId());
