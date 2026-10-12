@@ -1,3 +1,4 @@
+
 package smarttrade.backend.security;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,11 +10,18 @@ import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler
 
 import java.util.function.Supplier;
 
-public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
+public final class SpaCsrfTokenRequestHandler
+        implements CsrfTokenRequestHandler {
 
-    private final CsrfTokenRequestHandler plain = new CsrfTokenRequestAttributeHandler();
+    public static final String RAW_CSRF_TOKEN_ATTRIBUTE =
+            SpaCsrfTokenRequestHandler.class.getName()
+                    + ".RAW_CSRF_TOKEN";
 
-    private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
+    private final CsrfTokenRequestHandler plain =
+            new CsrfTokenRequestAttributeHandler();
+
+    private final CsrfTokenRequestHandler xor =
+            new XorCsrfTokenRequestAttributeHandler();
 
     @Override
     public void handle(
@@ -21,11 +29,18 @@ public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler
             HttpServletResponse response,
             Supplier<CsrfToken> csrfToken
     ) {
-        xor.handle(request, response, csrfToken);
+        // Resolve the actual, unmasked token.
+        // This also forces deferred token generation when needed.
+        CsrfToken rawToken = csrfToken.get();
 
-        // Force token generation so CookieCsrfTokenRepository
-        // writes the XSRF-TOKEN cookie for the SPA.
-        csrfToken.get();
+        // Keep the raw token available to our CSRF bootstrap endpoint.
+        request.setAttribute(
+                RAW_CSRF_TOKEN_ATTRIBUTE,
+                rawToken.getToken()
+        );
+
+        // Preserve Spring Security's XOR masking for request attributes.
+        xor.handle(request, response, () -> rawToken);
     }
 
     @Override
@@ -33,17 +48,18 @@ public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler
             HttpServletRequest request,
             CsrfToken csrfToken
     ) {
-        String headerValue = request.getHeader(csrfToken.getHeaderName());
+        String headerValue =
+                request.getHeader(csrfToken.getHeaderName());
 
         if (headerValue != null && !headerValue.isBlank()) {
-            // Axios sends the raw CSRF token in X-XSRF-TOKEN.
+            // Our SPA sends the raw token through the header.
             return plain.resolveCsrfTokenValue(
                     request,
                     csrfToken
             );
         }
 
-        // Keep XOR handling for request-parameter/server-rendered cases.
+        // Retain XOR resolution for form or request-parameter cases.
         return xor.resolveCsrfTokenValue(
                 request,
                 csrfToken

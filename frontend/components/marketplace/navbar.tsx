@@ -103,17 +103,22 @@ export function Navbar({ className }: NavbarProps) {
   }
 
   const handleLogout = async () => {
-    try {
-      await stompClient.deactivate()
-      await logout()
-      setUser(null)
-      resetWishlistCache()
-      router.refresh()
-    } catch (error) {
-      console.error("Logout failed", error)
-      toast.error("Failed to log out")
-    }
+  try {
+    // Clear the server-side browser cookie first.
+    await logout();
+
+    // Update the client-side authentication state.
+    setUser(null);
+    resetWishlistCache();
+
+    // Navigate away from authenticated pages.
+    router.replace("/");
+    router.refresh();
+  } catch (error) {
+    console.error("Logout failed", error);
+    toast.error("Failed to log out");
   }
+};
 
   const isActive = (href: string) => {
     if (href === "/marketplace") {

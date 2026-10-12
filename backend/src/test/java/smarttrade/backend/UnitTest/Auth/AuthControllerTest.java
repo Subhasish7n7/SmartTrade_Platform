@@ -18,13 +18,14 @@ import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.service.auth.AuthService;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import smarttrade.backend.security.SpaCsrfTokenRequestHandler;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthControllerTest {
@@ -40,9 +41,6 @@ public class AuthControllerTest {
 
     @Mock
     private CookieService cookieService;
-
-    @Mock
-    private CsrfToken csrfToken;
 
     @InjectMocks
     private AuthController authController;
@@ -145,12 +143,16 @@ public class AuthControllerTest {
     }
 
     @Test
-    void shouldReturnCsrfToken() {
-        when(csrfToken.getToken()).thenReturn("csrf-token");
-
-        var response = authController.csrf(csrfToken);
-
-        assertEquals("csrf-token", response.getBody().token());
+    void shouldReturnCsrfToken() throws Exception {
+        mockMvc.perform(
+                        get("/auth/csrf")
+                                .requestAttr(
+                                        SpaCsrfTokenRequestHandler.RAW_CSRF_TOKEN_ATTRIBUTE,
+                                        "csrf-token"
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("csrf-token"));
     }
 
     @Test

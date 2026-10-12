@@ -12,6 +12,8 @@ import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.service.auth.AuthService;
 import smarttrade.backend.service.auth.PasswordService;
+import jakarta.servlet.http.HttpServletRequest;
+import smarttrade.backend.security.SpaCsrfTokenRequestHandler;
 
 @RestController
 @RequestMapping("/auth")
@@ -44,8 +46,14 @@ public class AuthController {
     }
 
     @GetMapping("/csrf")
-    public ResponseEntity<CsrfResponse> csrf(CsrfToken csrfToken) {
-        return ResponseEntity.ok(new CsrfResponse(csrfToken.getToken()));
+    public ResponseEntity<CsrfResponse> csrf(HttpServletRequest request) {
+        Object value = request.getAttribute(SpaCsrfTokenRequestHandler.RAW_CSRF_TOKEN_ATTRIBUTE);
+
+        if (!(value instanceof String token) || token.isBlank()) {
+            throw new IllegalStateException("CSRF token was not initialized by Spring Security.");
+        }
+
+        return ResponseEntity.ok(new CsrfResponse(token));
     }
 
     @GetMapping("/me")
