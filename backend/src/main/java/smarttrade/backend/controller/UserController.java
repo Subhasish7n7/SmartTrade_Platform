@@ -1,84 +1,90 @@
 package smarttrade.backend.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import smarttrade.backend.Mappers.UserMapper;
-import smarttrade.backend.dto.user.UserDto;
-import smarttrade.backend.dto.user.MyUserProfileResponse;
-import smarttrade.backend.dto.user.PublicUserProfileResponse;
+import smarttrade.backend.dto.user.*;
+import smarttrade.backend.entities.user.ProfileVisibility;
 import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.security.AuthenticatedUserService;
-import smarttrade.backend.service.UserService;
+import smarttrade.backend.service.ChatService;
+import smarttrade.backend.service.user.UserPreferenceService;
+import smarttrade.backend.service.user.UserService;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class UserController {
-
     private final UserService userService;
     private final UserMapper userMapper;
     private final AuthenticatedUserService authenticatedUserService;
-
-    public UserController(
-            UserService userService,
-            UserMapper userMapper,
-            AuthenticatedUserService authenticatedUserService
-    ) {
-        this.userService = userService;
-        this.userMapper = userMapper;
-        this.authenticatedUserService = authenticatedUserService;
-    }
+    private final UserPreferenceService userPreferenceService;
+    private final ChatService chatService;
 
     @GetMapping("/users")
     public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<UserEntity> users = userService.getAllUsers();
-        List<UserDto> userDtos = users.stream()
-                .map(userMapper::mapFrom)
-                .toList();
-        return ResponseEntity.ok(userDtos);
+        return ResponseEntity.ok(userService.getAllUsers().stream().map(userMapper::mapFrom).toList());
     }
 
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserDto> getUser(@PathVariable Long userId) {
-        return userService.GetUser(userId)
-                .map(userEntity -> ResponseEntity.ok(userMapper.mapFrom(userEntity)))
+        return userService.GetUser(userId).map(user -> ResponseEntity.ok(userMapper.mapFrom(user)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/users/me/profile")
     public ResponseEntity<MyUserProfileResponse> getMyProfile() {
-        UserEntity currentUser = authenticatedUserService.getCurrentUser();
-        return ResponseEntity.ok(userMapper.mapToMyProfile(currentUser));
+        return ResponseEntity.ok(userMapper.mapToMyProfile(authenticatedUserService.getCurrentUser()));
+    }
+
+    @PatchMapping("/users/me/profile")
+    public ResponseEntity<MyUserProfileResponse> updateMyProfile(@Valid @RequestBody UpdateMyProfileRequest request) {
+        return ResponseEntity.ok(userMapper.mapToMyProfile(userService.updateMyProfile(request)));
+    }
+
+    @GetMapping("/users/me/preferences")
+    public ResponseEntity<UserPreferencesResponse> getMyPreferences() {
+        return ResponseEntity.ok(userPreferenceService.getMyPreferences());
+    }
+
+    @PatchMapping("/users/me/preferences")
+    public ResponseEntity<UserPreferencesResponse> updateMyPreferences(
+            @Valid @RequestBody UpdateUserPreferencesRequest request) {
+        UserPreferencesResponse before = userPreferenceService.getMyPreferences();
+        UserPreferencesResponse updated = userPreferenceService.updateMyPreferences(request);
+        if (request.getShowOnlineStatus() != null
+                && before.isShowOnlineStatus() != updated.isShowOnlineStatus()) {
+            chatService.refreshCurrentPresenceVisibility();
+        }
+        return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/users/{userId}/profile")
     public ResponseEntity<PublicUserProfileResponse> getPublicProfile(@PathVariable Long userId) {
-        return userService.GetUser(userId)
-                .map(user -> ResponseEntity.ok(userMapper.mapToPublicProfile(user)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        UserEntity user = userService.GetUser(userId).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        if (userPreferenceService.getForUser(user).getProfileVisibility() == ProfileVisibility.PRIVATE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(userMapper.mapToPublicProfile(user));
     }
 
     @PostMapping("/users")
     public ResponseEntity<UserDto> addUser(@Valid @RequestBody UserDto user) {
-        UserEntity userEntity = userMapper.mapTo(user);
-        UserDto userDto = userMapper.mapFrom(userService.addUser(userEntity));
-        return new ResponseEntity<>(userDto, HttpStatus.CREATED);
+        UserEntity saved = userService.addUser(userMapper.mapTo(user));
+        userPreferenceService.getOrCreateForUser(saved);
+        return new ResponseEntity<>(userMapper.mapFrom(saved), HttpStatus.CREATED);
     }
 
     @PatchMapping("/users/{userId}")
-    public ResponseEntity<UserDto> updateUser(
-            @PathVariable Long userId,
-            @Valid @RequestBody UserDto user
-    ) {
-        if (userService.GetUser(userId).isEmpty()) {
-            return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
-        }
-
-        UserEntity userEntity = userMapper.mapTo(user);
-        UserDto userDto = userMapper.mapFrom(userService.updateUser(userId, userEntity));
-        return ResponseEntity.ok(userDto);
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long userId, @Valid @RequestBody UserDto user) {
+        if (userService.GetUser(userId).isEmpty()) return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
+        UserDto dto = userMapper.mapFrom(userService.updateUser(userId, userMapper.mapTo(user)));
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/users/{userId}")

@@ -1,0 +1,20 @@
+package smarttrade.backend.events.trust;
+
+public enum TrustEventType {
+
+    TRADE_COMPLETED,
+    TRADE_FAULT_ASSIGNED,
+
+    REVIEW_RECEIVED,
+    REVIEW_HIDDEN,
+    REVIEW_REMOVED,
+    REVIEW_RESTORED,
+
+    USER_SUSPENDED,
+    USER_REACTIVATED,
+
+    VERIFICATION_GRANTED,
+    VERIFICATION_REVOKED,
+
+    LISTING_CHANGED
+}

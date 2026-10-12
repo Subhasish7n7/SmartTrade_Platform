@@ -12,18 +12,23 @@ import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemImageEntity;
 import smarttrade.backend.entities.item.ItemImageStatus;
+import smarttrade.backend.entities.item.ItemModerationStatus;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
+import smarttrade.backend.entities.user.AccountStatus;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.ItemRepo;
-import smarttrade.backend.repository.TradeOfferRepo;
-import smarttrade.backend.repository.TradeRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.entities.user.UserPreferenceEntity;
+import smarttrade.backend.repository.item.ItemRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.service.ChatService;
 import smarttrade.backend.service.NotificationService;
-import smarttrade.backend.service.TradeService;
+import smarttrade.backend.service.trade.TradeFinalizationService;
+import smarttrade.backend.service.trade.TradeService;
+import smarttrade.backend.service.user.UserPreferenceService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +57,10 @@ public class TradeServiceTest {
     private NotificationService notificationService;
     @Mock
     private ChatService chatService;
+    @Mock
+    private TradeFinalizationService tradeFinalizationService;
+    @Mock
+    private UserPreferenceService userPreferenceService;
 
     @InjectMocks
     private TradeService tradeService;
@@ -65,6 +74,14 @@ public class TradeServiceTest {
         sender = user(1L, "sender@test.com", "Sender");
         receiver = user(2L, "receiver@test.com", "Receiver");
         outsider = user(3L, "outsider@test.com", "Outsider");
+
+        // Default preferences let tests reach the behavior they are exercising.
+        UserPreferenceEntity preferences = mock(UserPreferenceEntity.class);
+        lenient().when(preferences.isAcceptTradeRequests()).thenReturn(true);
+        lenient().when(preferences.isAcceptBuyOffers()).thenReturn(true);
+        lenient().when(preferences.getMinimumTraderTrustScore()).thenReturn(0);
+        lenient().when(userPreferenceService.getForUser(any(UserEntity.class)))
+                .thenReturn(preferences);
     }
 
     @Test
@@ -108,7 +125,7 @@ public class TradeServiceTest {
         assertEquals(TradeStatus.OPEN, result.getTrade().getStatus());
 
         verify(notificationService).notifyTradeOfferReceived(sender, receiver, 100L, false);
-        verify(chatService).sendMessage(
+        verify(chatService).sendTradeMessage(
                 receiver.getUserId(),
                 "Hi! I've sent you a trade offer. Let me know what you think."
         );
@@ -144,7 +161,7 @@ public class TradeServiceTest {
         assertSame(receiver, result.getSender());
         assertSame(sender, result.getReceiver());
         verify(notificationService).notifyTradeOfferReceived(receiver, sender, 100L, true);
-        verify(chatService).sendMessage(
+        verify(chatService).sendTradeMessage(
                 sender.getUserId(),
                 "I can offer this instead. What do you think?"
         );
@@ -344,7 +361,7 @@ public class TradeServiceTest {
         assertEquals(500.0, result.getCashAdjustment());
         assertEquals(TradeStatus.OPEN, result.getTrade().getStatus());
         verify(notificationService).notifyBuyOffer(sender, receiver, 300L);
-        verify(chatService).sendMessage(
+        verify(chatService).sendTradeMessage(
                 receiver.getUserId(),
                 "I'd like to buy this item. Is this price okay?"
         );
@@ -406,7 +423,7 @@ public class TradeServiceTest {
                 .build();
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findTopByTrade_TradeIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(offer));
 
         tradeService.acceptTrade(100L);
@@ -421,7 +438,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.COMPLETED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
@@ -445,7 +462,7 @@ public class TradeServiceTest {
                 .build();
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findTopByTrade_TradeIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(offer));
 
         IllegalStateException exception = assertThrows(
@@ -472,7 +489,7 @@ public class TradeServiceTest {
                 .build();
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findTopByTrade_TradeIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(offer));
 
         IllegalStateException exception = assertThrows(
@@ -485,13 +502,13 @@ public class TradeServiceTest {
     }
 
     @Test
-    void shouldRequestCompletionAsInitiator() {
+    void shouldConfirmCompletionAsInitiator() {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
-        tradeService.requestCompletion(100L);
+        tradeService.confirmCompletion(100L);
 
         assertTrue(trade.getInitiatorCompletionConfirmed());
         assertFalse(trade.getReceiverCompletionConfirmed());
@@ -501,13 +518,13 @@ public class TradeServiceTest {
     }
 
     @Test
-    void shouldRequestCompletionAsReceiver() {
+    void shouldConfirmCompletionAsReceiver() {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
-        tradeService.requestCompletion(100L);
+        tradeService.confirmCompletion(100L);
 
         assertFalse(trade.getInitiatorCompletionConfirmed());
         assertTrue(trade.getReceiverCompletionConfirmed());
@@ -516,16 +533,16 @@ public class TradeServiceTest {
     }
 
     @Test
-    void shouldIgnoreRepeatedCompletionRequest() {
+    void shouldIgnoreRepeatedCompletionConfirmation() {
         LocalDateTime requestedAt = LocalDateTime.now().minusMinutes(5);
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
         trade.setInitiatorCompletionConfirmed(true);
         trade.setCompletionRequestedAt(requestedAt);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
-        tradeService.requestCompletion(100L);
+        tradeService.confirmCompletion(100L);
 
         assertEquals(requestedAt, trade.getCompletionRequestedAt());
         verify(tradeRepo, never()).save(any());
@@ -533,33 +550,33 @@ public class TradeServiceTest {
     }
 
     @Test
-    void shouldRejectCompletionRequestFromNonParticipant() {
+    void shouldRejectCompletionFromNonParticipant() {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(outsider);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> tradeService.requestCompletion(100L)
+                () -> tradeService.confirmCompletion(100L)
         );
 
         assertEquals("User not part of trade", exception.getMessage());
     }
 
     @Test
-    void shouldRejectCompletionRequestBeforeAcceptance() {
+    void shouldRejectCompletionBeforeAcceptance() {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.OPEN);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> tradeService.requestCompletion(100L)
+                () -> tradeService.confirmCompletion(100L)
         );
 
-        assertEquals("Trade must be accepted first", exception.getMessage());
+        assertEquals("Trade must be accepted first.", exception.getMessage());
     }
 
     @Test
@@ -567,7 +584,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         tradeService.confirmCompletion(100L);
 
@@ -575,47 +592,27 @@ public class TradeServiceTest {
         assertFalse(trade.getReceiverCompletionConfirmed());
         assertEquals(TradeStatus.ACCEPTED, trade.getStatus());
         verify(tradeRepo).save(trade);
-        verifyNoInteractions(tradeOfferRepo, notificationService);
+        verifyNoInteractions(tradeOfferRepo);
+        verify(notificationService).notifyCompletionRequested(sender, receiver, 100L);
     }
 
     @Test
-    void shouldCompleteTradeAfterBothParticipantsConfirm() {
-        ItemEntity senderItem = item(11L, sender);
-        ItemEntity receiverItem = item(22L, receiver);
+    void shouldDelegateFinalizationAfterBothParticipantsConfirm() {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.ACCEPTED);
         trade.setInitiatorCompletionConfirmed(true);
 
-        TradeOfferEntity latestOffer = TradeOfferEntity.builder()
-                .id(200L)
-                .sender(sender)
-                .receiver(receiver)
-                .senderItems(List.of(senderItem))
-                .receiverItems(List.of(receiverItem))
-                .trade(trade)
-                .createdAt(LocalDateTime.now())
-                .build();
-
         when(authenticatedUserService.getCurrentUser()).thenReturn(receiver);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
-        when(tradeOfferRepo.findTopByTrade_TradeIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(latestOffer));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         tradeService.confirmCompletion(100L);
 
-        assertEquals(TradeStatus.COMPLETED, trade.getStatus());
-        assertFalse(trade.getInitiatorCompletionConfirmed());
-        assertFalse(trade.getReceiverCompletionConfirmed());
-        assertFalse(senderItem.isAvailable());
-        assertTrue(senderItem.isTraded());
-        assertNotNull(senderItem.getCompletedAt());
-        assertFalse(receiverItem.isAvailable());
-        assertTrue(receiverItem.isTraded());
-        assertNotNull(receiverItem.getCompletedAt());
+        assertTrue(trade.getInitiatorCompletionConfirmed());
+        assertTrue(trade.getReceiverCompletionConfirmed());
+        assertEquals(TradeStatus.ACCEPTED, trade.getStatus());
 
-        verify(itemRepo).saveAll(List.of(senderItem));
-        verify(itemRepo).saveAll(List.of(receiverItem));
-        verify(tradeRepo).save(trade);
-        verify(notificationService).notifyTradeCompleted(sender, receiver, 100L);
-        verify(notificationService).notifyTradeCompleted(receiver, sender, 100L);
+        verify(tradeFinalizationService).completeTrade(100L);
+        verify(tradeRepo, never()).save(any());
+        verifyNoInteractions(itemRepo, tradeOfferRepo, notificationService);
     }
 
     @Test
@@ -623,7 +620,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.OPEN);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         tradeService.cancelTrade(100L);
 
@@ -637,7 +634,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.OPEN);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(outsider);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
@@ -654,7 +651,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.COMPLETED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
@@ -670,7 +667,7 @@ public class TradeServiceTest {
         TradeEntity trade = trade(100L, sender, receiver, TradeStatus.CANCELLED);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
-        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
+        when(tradeRepo.findByIdForUpdate(100L)).thenReturn(Optional.of(trade));
 
         tradeService.cancelTrade(100L);
 
@@ -710,6 +707,8 @@ public class TradeServiceTest {
         TradeOfferResponse firstResponse = TradeOfferResponse.builder().tradeOfferId(201L).build();
         TradeOfferResponse secondResponse = TradeOfferResponse.builder().tradeOfferId(202L).build();
 
+        when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
+        when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findByTrade_TradeIdOrderByCreatedAtAsc(100L)).thenReturn(List.of(first, second));
         when(tradeMapper.mapFromEntity(first)).thenReturn(firstResponse);
         when(tradeMapper.mapFromEntity(second)).thenReturn(secondResponse);
@@ -729,6 +728,7 @@ public class TradeServiceTest {
                 .build();
         TradeDetailsResponse details = TradeDetailsResponse.builder().tradeId(100L).build();
 
+        when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
         when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findById(200L)).thenReturn(Optional.of(offerEntity));
         when(tradeOfferRepo.findTradeHistoryByTradeId(100L)).thenReturn(List.of(historyRow));
@@ -744,6 +744,7 @@ public class TradeServiceTest {
         TradeEntity otherTrade = trade(999L, sender, receiver, TradeStatus.OPEN);
         TradeOfferEntity offerEntity = TradeOfferEntity.builder().id(200L).trade(otherTrade).build();
 
+        when(authenticatedUserService.getCurrentUser()).thenReturn(sender);
         when(tradeRepo.findById(100L)).thenReturn(Optional.of(trade));
         when(tradeOfferRepo.findById(200L)).thenReturn(Optional.of(offerEntity));
 
@@ -787,7 +788,13 @@ public class TradeServiceTest {
 
     private UserEntity user(Long id, String email, String name) {
         return UserEntity.builder()
-                .userId(id).email(email).name(name).password("password").build();
+                .userId(id)
+                .email(email)
+                .name(name)
+                .password("password")
+                .accountStatus(AccountStatus.ACTIVE)
+                .trustScore(500.0)
+                .build();
     }
 
     private ItemEntity item(Long id, UserEntity owner) {
@@ -798,6 +805,7 @@ public class TradeServiceTest {
                 .userPrice(1000)
                 .generatedPrice(1200)
                 .condition(ItemCondition.GOOD)
+                .moderationStatus(ItemModerationStatus.ACTIVE)
                 .available(true)
                 .sold(false)
                 .traded(false)
@@ -817,3 +825,4 @@ public class TradeServiceTest {
                 .build();
     }
 }
+

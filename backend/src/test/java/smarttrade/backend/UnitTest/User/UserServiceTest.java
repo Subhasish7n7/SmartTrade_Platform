@@ -8,14 +8,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.UserRepo;
-import smarttrade.backend.service.UserService;
+import smarttrade.backend.repository.user.UserRepo;
+import smarttrade.backend.service.user.UserService;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {

@@ -1,10 +1,6 @@
 "use client"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,6 +23,7 @@ import {
   Bell,
   ChevronDown,
   Heart,
+  LayoutDashboard,
   LogOut,
   Menu,
   MessageCircle,
@@ -37,15 +34,12 @@ import {
   X,
 } from "lucide-react"
 import Link from "next/link"
-import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { Notification } from "./notification"
+import { resetWishlistCache } from "@/lib/api/wishlist/store"
 
 interface NavbarProps {
   className?: string
@@ -70,12 +64,7 @@ export function Navbar({ className }: NavbarProps) {
 
   const { user, setUser } = useAuth()
 
-  const {
-    unreadCount: notificationCount,
-    tradeAlertCount,
-    chatAlertCount,
-    markModuleNotificationsRead,
-  } = useNotifications()
+  const { unreadCount: notificationCount, tradeAlertCount, chatAlertCount, markModuleNotificationsRead } = useNotifications()
 
   React.useEffect(() => {
     const queryName = searchParams.get("name") ?? ""
@@ -91,17 +80,14 @@ export function Navbar({ className }: NavbarProps) {
       passive: true,
     })
 
-    return () =>
-      window.removeEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const trimmed = searchValue.trim()
-    const nextUrl = trimmed
-      ? `/marketplace?name=${encodeURIComponent(trimmed)}`
-      : "/marketplace"
+    const nextUrl = trimmed ? `/marketplace?name=${encodeURIComponent(trimmed)}` : "/marketplace"
 
     setIsSearchOpen(false)
     setIsMenuOpen(false)
@@ -121,8 +107,7 @@ export function Navbar({ className }: NavbarProps) {
       await stompClient.deactivate()
       await logout()
       setUser(null)
-
-      router.replace("/login")
+      resetWishlistCache()
       router.refresh()
     } catch (error) {
       console.error("Logout failed", error)
@@ -142,11 +127,7 @@ export function Navbar({ className }: NavbarProps) {
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className={cn(
-        "marketplace-navbar",
-        scrolled && "marketplace-navbar-scrolled",
-        className,
-      )}
+      className={cn("marketplace-navbar", scrolled && "marketplace-navbar-scrolled", className)}
     >
       <div className="mx-auto max-w-[1600px] px-3 sm:px-5 lg:px-7">
         <div className="flex min-h-16 items-center gap-3 py-2 lg:gap-4">
@@ -181,10 +162,7 @@ export function Navbar({ className }: NavbarProps) {
             <span className="sr-only">Toggle menu</span>
           </Button>
 
-          <Link
-            href="/"
-            className="marketplace-navbar-brand shrink-0"
-          >
+          <Link href="/" className="marketplace-navbar-brand shrink-0">
             <div className="marketplace-navbar-logo">
               <ArrowLeftRight className="h-4 w-4 text-background" />
             </div>
@@ -200,11 +178,7 @@ export function Navbar({ className }: NavbarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  "marketplace-navbar-link",
-                  isActive(item.href) &&
-                    "marketplace-navbar-link-active",
-                )}
+                className={cn("marketplace-navbar-link", isActive(item.href) && "marketplace-navbar-link-active")}
               >
                 {item.label}
               </Link>
@@ -212,19 +186,14 @@ export function Navbar({ className }: NavbarProps) {
           </div>
 
           <div className="hidden min-w-0 flex-1 justify-center md:flex">
-            <form
-              onSubmit={submitSearch}
-              className="w-full max-w-2xl"
-            >
+            <form onSubmit={submitSearch} className="w-full max-w-2xl">
               <div className="marketplace-navbar-search">
                 <Search className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
 
                 <Input
                   type="search"
                   value={searchValue}
-                  onChange={(event) =>
-                    setSearchValue(event.target.value)
-                  }
+                  onChange={(event) => setSearchValue(event.target.value)}
                   placeholder="Search the marketplace..."
                   aria-label="Search the marketplace"
                   className="h-11 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/90"
@@ -255,78 +224,39 @@ export function Navbar({ className }: NavbarProps) {
               variant="ghost"
               size="icon-lg"
               className="md:hidden text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
-              onClick={() =>
-                setIsSearchOpen((open) => !open)
-              }
+              onClick={() => setIsSearchOpen((open) => !open)}
             >
               <Search className="h-[21px] w-[21px]" />
               <span className="sr-only">Search</span>
             </Button>
-
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              className="icon-glow icon-glow-violet hidden sm:flex relative hover:bg-transparent"
-            >
+            <Link href={"/wishlist"}>
+            <Button variant="ghost" size="icon-lg" className="icon-glow icon-glow-violet hidden sm:flex relative hover:bg-transparent">
               <Heart className="h-[21px] w-[21px]" />
               <span className="sr-only">Wishlist</span>
             </Button>
+            </Link>
 
             <Notification />
 
-            <Link
-              href="/trades"
-              onClick={() =>
-                void markModuleNotificationsRead("TRADE")
-              }
-            >
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="icon-glow icon-glow-gold relative hover:bg-transparent"
-              >
+            <Link href="/trades" onClick={() => void markModuleNotificationsRead("TRADE")}>
+              <Button variant="ghost" size="icon-lg" className="icon-glow icon-glow-gold relative hover:bg-transparent">
                 <ArrowLeftRight className="h-[21px] w-[21px]" />
 
                 {tradeAlertCount > 0 && (
-                  <span className="nav-count nav-count-warning">
-                    {tradeAlertCount > 99
-                      ? "99+"
-                      : tradeAlertCount}
-                  </span>
+                  <span className="nav-count nav-count-warning">{tradeAlertCount > 99 ? "99+" : tradeAlertCount}</span>
                 )}
 
-                <span className="sr-only">
-                  Trade offers
-                </span>
+                <span className="sr-only">Trade offers</span>
               </Button>
             </Link>
 
-            <Link
-              href="/messages"
-              onClick={() =>
-                void markModuleNotificationsRead(
-                  "CHAT_CONVERSATION",
-                )
-              }
-            >
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="icon-glow icon-glow-blue relative hover:bg-transparent"
-              >
+            <Link href="/messages" onClick={() => void markModuleNotificationsRead("CHAT_CONVERSATION")}>
+              <Button variant="ghost" size="icon-lg" className="icon-glow icon-glow-blue relative hover:bg-transparent">
                 <MessageCircle className="h-[21px] w-[21px]" />
 
-                {chatAlertCount > 0 && (
-                  <span className="nav-count nav-count-info">
-                    {chatAlertCount > 99
-                      ? "99+"
-                      : chatAlertCount}
-                  </span>
-                )}
+                {chatAlertCount > 0 && <span className="nav-count nav-count-info">{chatAlertCount > 99 ? "99+" : chatAlertCount}</span>}
 
-                <span className="sr-only">
-                  Messages
-                </span>
+                <span className="sr-only">Messages</span>
               </Button>
             </Link>
 
@@ -348,11 +278,7 @@ export function Navbar({ className }: NavbarProps) {
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={10}
-                  className="w-64 glass-strong border-border/60 p-2"
-                >
+                <DropdownMenuContent align="end" sideOffset={10} className="w-64 glass-strong border-border/60 p-2">
                   <DropdownMenuLabel className="px-3 py-2">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
@@ -363,13 +289,9 @@ export function Navbar({ className }: NavbarProps) {
                       </Avatar>
 
                       <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {user.name}
-                        </p>
+                        <p className="truncate font-medium">{user.name}</p>
 
-                        <p className="truncate text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                   </DropdownMenuLabel>
@@ -377,106 +299,64 @@ export function Navbar({ className }: NavbarProps) {
                   <DropdownMenuSeparator />
 
                   <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
+                    <DropdownMenuItem asChild className="premium-menu-item">
                       <Link href="/profile">
                         <User className="mr-2 h-4 w-4" />
                         Profile
                       </Link>
                     </DropdownMenuItem>
+                    {user.role === "ADMIN" && (
+                      <DropdownMenuItem asChild className="premium-menu-item">
+                        <Link href="/admin">
+                          <LayoutDashboard className="mr-2 h-4 w-4 text-[var(--trust-blue)]" />
+                          Admin Console
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
 
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
+                    <DropdownMenuItem asChild className="premium-menu-item">
                       <Link href="/inventory">
                         <Package className="mr-2 h-4 w-4" />
                         My Inventory
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
-                      <Link
-                        href="/trades"
-                        onClick={() =>
-                          void markModuleNotificationsRead(
-                            "TRADE",
-                          )
-                        }
-                      >
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/trades" onClick={() => void markModuleNotificationsRead("TRADE")}>
                         <ArrowLeftRight className="mr-2 h-4 w-4" />
                         My Trades
-
-                        {tradeAlertCount > 0 && (
-                          <span className="ml-auto text-xs text-warning">
-                            {tradeAlertCount}
-                          </span>
-                        )}
+                        {tradeAlertCount > 0 && <span className="ml-auto text-xs text-warning">{tradeAlertCount}</span>}
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
+                    <DropdownMenuItem asChild className="premium-menu-item">
                       <Link href="/wishlist">
                         <Heart className="mr-2 h-4 w-4" />
                         Wishlist
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
+                    <DropdownMenuItem asChild className="premium-menu-item">
                       <Link href="/notifications">
                         <Bell className="mr-2 h-4 w-4" />
                         Notifications
-
-                        {notificationCount > 0 && (
-                          <span className="ml-auto text-xs text-primary">
-                            {notificationCount}
-                          </span>
-                        )}
+                        {notificationCount > 0 && <span className="ml-auto text-xs text-primary">{notificationCount}</span>}
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem
-                      asChild
-                      className="premium-menu-item"
-                    >
-                      <Link
-                        href="/messages"
-                        onClick={() =>
-                          void markModuleNotificationsRead(
-                            "CHAT_CONVERSATION",
-                          )
-                        }
-                      >
+                    <DropdownMenuItem asChild className="premium-menu-item">
+                      <Link href="/messages" onClick={() => void markModuleNotificationsRead("CHAT_CONVERSATION")}>
                         <MessageCircle className="mr-2 h-4 w-4" />
                         Messages
-
-                        {chatAlertCount > 0 && (
-                          <span className="ml-auto text-xs text-info">
-                            {chatAlertCount}
-                          </span>
-                        )}
+                        {chatAlertCount > 0 && <span className="ml-auto text-xs text-info">{chatAlertCount}</span>}
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
 
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuItem
-                    asChild
-                    className="premium-menu-item"
-                  >
-                    <Link href="/settings">
+                  <DropdownMenuItem asChild className="premium-menu-item">
+                    <Link href="/profile?isSettings=true">
                       <Settings className="mr-2.5 h-4 w-4" />
                       Settings
                     </Link>
@@ -495,10 +375,7 @@ export function Navbar({ className }: NavbarProps) {
               </DropdownMenu>
             ) : (
               <Link href="/login">
-                <Button
-                  variant="trade"
-                  className="rounded-xl"
-                >
+                <Button variant="trade" className="rounded-xl">
                   Login
                 </Button>
               </Link>
@@ -524,19 +401,14 @@ export function Navbar({ className }: NavbarProps) {
             exit={{ opacity: 0, height: 0 }}
             className="border-t border-white/[0.06] md:hidden"
           >
-            <form
-              onSubmit={submitSearch}
-              className="p-3 sm:p-4"
-            >
+            <form onSubmit={submitSearch} className="p-3 sm:p-4">
               <div className="marketplace-navbar-search">
                 <Search className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
 
                 <Input
                   type="search"
                   value={searchValue}
-                  onChange={(event) =>
-                    setSearchValue(event.target.value)
-                  }
+                  onChange={(event) => setSearchValue(event.target.value)}
                   placeholder="Search the marketplace..."
                   aria-label="Search the marketplace"
                   autoFocus
@@ -579,14 +451,8 @@ export function Navbar({ className }: NavbarProps) {
                 >
                   <Link
                     href={item.href}
-                    className={cn(
-                      "marketplace-navbar-mobile-link",
-                      isActive(item.href) &&
-                        "marketplace-navbar-mobile-link-active",
-                    )}
-                    onClick={() =>
-                      setIsMenuOpen(false)
-                    }
+                    className={cn("marketplace-navbar-mobile-link", isActive(item.href) && "marketplace-navbar-mobile-link-active")}
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
                   </Link>
@@ -595,11 +461,7 @@ export function Navbar({ className }: NavbarProps) {
 
               <div className="my-3 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
-              <Link
-                href="/wishlist"
-                className="marketplace-navbar-mobile-link"
-                onClick={() => setIsMenuOpen(false)}
-              >
+              <Link href="/wishlist" className="marketplace-navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>
                 <Heart className="h-4 w-4" />
                 Wishlist
               </Link>

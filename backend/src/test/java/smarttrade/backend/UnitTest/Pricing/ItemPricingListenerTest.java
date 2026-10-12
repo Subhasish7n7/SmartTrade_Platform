@@ -5,9 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import smarttrade.backend.events.ItemPersistedEvent;
+import smarttrade.backend.events.itemPriceFetch.ItemPersistedEvent;
+import smarttrade.backend.events.itemPriceFetch.ItemPricingListener;
 import smarttrade.backend.service.pricing.PricingBackgroundService;
-import smarttrade.backend.events.ItemPricingListener;
 
 import static org.mockito.Mockito.verify;
 

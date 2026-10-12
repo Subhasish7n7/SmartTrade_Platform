@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.entities.item.ItemImageEntity;
 import smarttrade.backend.entities.item.ItemImageStatus;
-import smarttrade.backend.repository.ItemImageRepository;
+import smarttrade.backend.repository.item.ItemImageRepository;
 
 import java.util.List;
 

@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.CartItemDto;
 import smarttrade.backend.entities.CartItemEntity;
-import smarttrade.backend.repository.ItemRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.repository.item.ItemRepo;
+import smarttrade.backend.repository.user.UserRepo;
 
 import java.util.List;
 
@@ -41,7 +41,7 @@ public class CartItemMapper {
     }
 
     public CartItemDto createDto(Long userId, Long itemId, int quantity) {
-        CartItemDto dto= new CartItemDto();
+        CartItemDto dto = new CartItemDto();
         dto.setUserId(userId);
         dto.setItemId(itemId);
         dto.setQuantity(quantity);

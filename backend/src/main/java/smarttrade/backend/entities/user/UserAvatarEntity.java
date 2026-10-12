@@ -16,6 +16,10 @@ import java.time.LocalDateTime;
         },
         uniqueConstraints = {
                 @UniqueConstraint(
+                        name = "uk_user_avatars_user_id",
+                        columnNames = "user_id"
+                ),
+                @UniqueConstraint(
                         name = "uk_user_avatars_asset_id",
                         columnNames = "asset_id"
                 )
@@ -32,6 +36,17 @@ public class UserAvatarEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /*
+     * ACTIVE avatar:
+     *     user_id = actual user
+     *
+     * PENDING_DELETION avatar:
+     *     user_id = null
+     *
+     * Keeping pending rows detached lets the new avatar become the
+     * user's unique active avatar while the old Cloudinary asset
+     * remains available for asynchronous cleanup.
+     */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserEntity user;

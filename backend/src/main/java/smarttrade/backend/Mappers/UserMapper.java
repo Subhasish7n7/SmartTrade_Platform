@@ -1,11 +1,12 @@
 package smarttrade.backend.Mappers;
 
 import org.springframework.stereotype.Component;
-import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.dto.auth.CurrentUserResponse;
 import smarttrade.backend.dto.user.MyUserProfileResponse;
 import smarttrade.backend.dto.user.PublicUserProfileResponse;
+import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.entities.user.UserEntity;
+
 
 @Component
 public class UserMapper {
@@ -51,6 +52,8 @@ public class UserMapper {
                                 ? currentUser.getAvatar().getSecureUrl()
                                 : null
                 )
+                .role(currentUser.getRole())
+                .accountStatus(currentUser.getAccountStatus())
                 .build();
     }
 

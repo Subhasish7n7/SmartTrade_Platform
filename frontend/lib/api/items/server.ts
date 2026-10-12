@@ -20,4 +20,11 @@ export async function getItemById(id: number) {
   return response.data
 }
 
+export async function getMyInventory() {
+  const api = await serverApi()
+  const response = await api.get<ItemResponse[]>("/items/me/inventory")
+  return response.data
+}
+
+
 

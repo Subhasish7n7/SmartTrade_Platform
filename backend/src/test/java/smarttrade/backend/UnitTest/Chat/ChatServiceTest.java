@@ -21,11 +21,16 @@ import smarttrade.backend.entities.chat.ChatConversationEntity;
 import smarttrade.backend.entities.chat.ChatMessageEntity;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
-import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.*;
+import smarttrade.backend.entities.user.*;
+import smarttrade.backend.repository.chat.ChatConversationRepo;
+import smarttrade.backend.repository.chat.ChatMessageRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.service.ChatService;
 import smarttrade.backend.service.NotificationService;
+import smarttrade.backend.service.user.UserPreferenceService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
 import smarttrade.backend.websocket.ChatPresencePublisher;
 
@@ -62,6 +67,8 @@ public class ChatServiceTest {
     private ChatPresencePublisher presencePublisher;
     @Mock
     private TradeOfferRepo tradeOfferRepo;
+    @Mock
+    private UserPreferenceService userPreferenceService;
 
     @InjectMocks
     private ChatService chatService;
@@ -77,8 +84,34 @@ public class ChatServiceTest {
         outsider = user(3L, "outsider@test.com", "Outsider");
     }
 
+    private UserPreferenceEntity defaultPreferences(UserEntity owner) {
+        LocalDateTime now = LocalDateTime.now();
+
+        return UserPreferenceEntity.builder()
+                .user(owner)
+                .profileVisibility(ProfileVisibility.PUBLIC)
+                .locationVisibility(LocationVisibility.CITY)
+                .inventoryVisibility(InventoryVisibility.PUBLIC)
+                .showOnlineStatus(true)
+                .acceptTradeRequests(true)
+                .acceptBuyOffers(true)
+                .messagePermission(MessagePermission.EVERYONE)
+                .minimumTraderTrustScore(0)
+                .showUnavailableListings(false)
+                .defaultListingType(DefaultListingType.SALE)
+                .notifyTrades(true)
+                .notifyMessages(true)
+                .notifySystem(true)
+                .loginAlerts(false)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
     @Test
     void shouldSendMessageAndCreateConversationWhenConversationDoesNotExist() {
+        when(userPreferenceService.getForUser(otherUser))
+                .thenReturn(defaultPreferences(otherUser));
         ChatConversationEntity conversation = conversation(10L, user, otherUser);
 
         ChatMessageEntity savedMessage = message(
@@ -160,6 +193,8 @@ public class ChatServiceTest {
 
     @Test
     void shouldSendMessageUsingExistingConversation() {
+        when(userPreferenceService.getForUser(otherUser))
+                .thenReturn(defaultPreferences(otherUser));
         ChatConversationEntity conversation = conversation(10L, user, otherUser);
         ChatMessageEntity savedMessage =
                 message(100L, user, conversation, "Hello");
@@ -236,7 +271,7 @@ public class ChatServiceTest {
                 chatService.getConversation(2L, 0, 40);
 
         assertEquals(1, result.getTotalElements());
-        assertSame(mapped, result.getContent().get(0));
+        assertSame(mapped, result.getContent().getFirst());
         assertSame(latest, conversation.getUser1LastReadMessage());
         verify(conversationRepo).save(conversation);
     }
@@ -345,7 +380,7 @@ public class ChatServiceTest {
                 newerConversation, user, newerMessage, 0, 1))
                 .thenReturn(newerResponse);
 
-        List<ChatConversationResponse> result = chatService.getInbox();
+        List<ChatConversationResponse> result = chatService.getInbox(null);
 
         assertEquals(2, result.size());
         assertSame(newerResponse, result.get(0));
@@ -404,6 +439,8 @@ public class ChatServiceTest {
 
     @Test
     void shouldUpdatePresenceAndPublishOnlineWhenUserBecomesActive() {
+        when(userPreferenceService.getForUser(user))
+                .thenReturn(defaultPreferences(user));
         ChatConversationEntity conversation = conversation(10L, user, otherUser);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(user);
@@ -419,6 +456,8 @@ public class ChatServiceTest {
 
     @Test
     void shouldNotPublishOnlineAgainWhenUserAlreadyActive() {
+        when(userPreferenceService.getForUser(user))
+                .thenReturn(defaultPreferences(user));
         ChatConversationEntity conversation = conversation(10L, user, otherUser);
 
         when(authenticatedUserService.getCurrentUser()).thenReturn(user);

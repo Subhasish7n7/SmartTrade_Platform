@@ -29,7 +29,17 @@ import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.*;
+import smarttrade.backend.entities.user.UserPreferenceEntity;
+import smarttrade.backend.repository.chat.ChatConversationRepo;
+import smarttrade.backend.repository.chat.ChatMessageRepo;
+import smarttrade.backend.repository.item.ItemImageRepository;
+import smarttrade.backend.repository.item.ItemRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeRepo;
+import smarttrade.backend.repository.TrustScoreHistoryRepo;
+import smarttrade.backend.repository.user.UserAvatarRepo;
+import smarttrade.backend.repository.user.UserRepo;
+import smarttrade.backend.repository.user.UserPreferenceRepo;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.security.JwtService;
 import smarttrade.backend.service.NotificationService;
@@ -83,6 +93,10 @@ public class TradeControllerIntegrationTest {
     @Autowired
     private UserRepo userRepo;
     @Autowired
+    private UserPreferenceRepo userPreferenceRepo;
+    @Autowired
+    private TrustScoreHistoryRepo trustScoreHistoryRepo;
+    @Autowired
     private ItemRepo itemRepo;
     @Autowired
     private TradeRepo tradeRepo;
@@ -90,8 +104,6 @@ public class TradeControllerIntegrationTest {
     private TradeOfferRepo tradeOfferRepo;
     @Autowired
     private JwtService jwtService;
-    @Autowired
-    private ItemImageRepository itemImageRepository;
     @Autowired
     private ChatConversationRepo conversationRepo;
     @Autowired
@@ -121,6 +133,9 @@ public class TradeControllerIntegrationTest {
         tradeRepo.deleteAll();
         itemRepo.deleteAll();
         userAvatarRepo.deleteAll();
+        // These tables have foreign keys to users and must be cleared first.
+        trustScoreHistoryRepo.deleteAll();
+        userPreferenceRepo.deleteAll();
         userRepo.deleteAll();
         sender = userRepo.save(
                 UserEntity.builder()
@@ -137,6 +152,10 @@ public class TradeControllerIntegrationTest {
                         .name("Receiver")
                         .build()
         );
+
+        // Keep trade-test participants on known, permissive default preferences.
+        userPreferenceRepo.save(defaultPreferences(sender));
+        userPreferenceRepo.save(defaultPreferences(receiver));
 
         senderToken = jwtService.generateToken(sender.getEmail());
         receiverToken = jwtService.generateToken(receiver.getEmail());
@@ -248,7 +267,7 @@ public class TradeControllerIntegrationTest {
         TradeEntity trade = tradeRepo.save(trade(sender, receiver, TradeStatus.ACCEPTED));
 
         mockMvc.perform(
-                        patch("/trade/" + trade.getTradeId() + "/request-completion")
+                        patch("/trade/" + trade.getTradeId() + "/confirm-completion")
                                 .with(csrfCookie())
                                 .cookie(new Cookie(CookieService.ACCESS_COOKIE, senderToken))
                 )
@@ -293,8 +312,9 @@ public class TradeControllerIntegrationTest {
         ItemEntity updatedReceiverItem = itemRepo.findById(receiverItem.getItemId()).orElseThrow();
 
         assertEquals(TradeStatus.COMPLETED, updatedTrade.getStatus());
-        assertFalse(updatedTrade.getInitiatorCompletionConfirmed());
-        assertFalse(updatedTrade.getReceiverCompletionConfirmed());
+        // Keep both confirmations as an audit of why the trade was finalized.
+        assertTrue(updatedTrade.getInitiatorCompletionConfirmed());
+        assertTrue(updatedTrade.getReceiverCompletionConfirmed());
 
         assertFalse(updatedSenderItem.isAvailable());
         assertTrue(updatedSenderItem.isTraded());
@@ -454,6 +474,15 @@ public class TradeControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].itemId").value(tradeable.getItemId()))
                 .andExpect(jsonPath("$[0].name").value("Tradeable"))
                 .andExpect(jsonPath("$[0].imageUrl").value("https://example.com/active.jpg"));
+    }
+
+    private UserPreferenceEntity defaultPreferences(UserEntity owner) {
+        return UserPreferenceEntity.builder()
+                .user(owner)
+                .acceptTradeRequests(true)
+                .acceptBuyOffers(true)
+                .minimumTraderTrustScore(0)
+                .build();
     }
 
     private UserEntity user(String email, String name) {

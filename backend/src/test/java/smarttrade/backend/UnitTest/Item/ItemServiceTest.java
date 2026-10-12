@@ -12,29 +12,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.User;
 import smarttrade.backend.Mappers.ItemMapper;
-import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.dto.item.ItemSearchRequest;
 import smarttrade.backend.dto.item.ItemSearchResponse;
 import smarttrade.backend.dto.item.ItemSort;
 import smarttrade.backend.dto.item.UpdateItemRequest;
-import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.entities.item.ItemCategory;
-import smarttrade.backend.entities.item.ItemEntity;
-import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.events.ItemPersistedEvent;
+import smarttrade.backend.entities.item.*;
+import smarttrade.backend.entities.user.*;
+import smarttrade.backend.events.itemPriceFetch.ItemPersistedEvent;
 import smarttrade.backend.exceptions.ForbiddenOperationException;
-import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.repository.item.ItemRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
-import smarttrade.backend.service.ItemImageService;
-import smarttrade.backend.service.ItemService;
-import smarttrade.backend.service.pricing.PriceEstimationService;
-import smarttrade.backend.service.pricing.PricingBackgroundService;
-import smarttrade.backend.service.pricing.PricingJobDecision;
-import smarttrade.backend.service.pricing.PricingJobRequest;
-import smarttrade.backend.service.pricing.PricingJobService;
-import smarttrade.backend.service.pricing.PricingRefreshOutcome;
-import smarttrade.backend.service.pricing.PricingRefreshResponse;
+import smarttrade.backend.service.item.ItemImageService;
+import smarttrade.backend.service.item.ItemService;
+import smarttrade.backend.service.item.PublicItemVisibilityService;
+import smarttrade.backend.service.pricing.*;
+import smarttrade.backend.service.user.UserPreferenceService;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -72,6 +66,10 @@ class ItemServiceTest {
 
     @Mock
     private ItemImageService itemImageService;
+    @Mock
+    private UserPreferenceService userPreferenceService;
+    @Mock
+    private PublicItemVisibilityService publicItemVisibilityService;
 
     @InjectMocks
     private ItemService itemService;
@@ -113,29 +111,30 @@ class ItemServiceTest {
                 .build();
     }
 
+
     @Test
     void shouldReturnAllItems() {
-        when(itemRepo.findAll()).thenReturn(List.of(item));
+        when(itemRepo.findAllByModerationStatus(ItemModerationStatus.ACTIVE)).thenReturn(List.of(item));
 
         List<ItemEntity> result = itemService.GetAllItems();
 
         assertEquals(List.of(item), result);
-        verify(itemRepo).findAll();
+        verify(itemRepo).findAllByModerationStatus(ItemModerationStatus.ACTIVE);
     }
 
     @Test
     void shouldReturnInventoryForUser() {
-        when(itemRepo.findByUser_UserId(1L)).thenReturn(List.of(item));
+        when(itemRepo.findByUser_UserIdAndModerationStatus(1L, ItemModerationStatus.ACTIVE)).thenReturn(List.of(item));
 
         List<ItemEntity> result = itemService.getInventory(1L);
 
         assertEquals(List.of(item), result);
-        verify(itemRepo).findByUser_UserId(1L);
+        verify(itemRepo).findByUser_UserIdAndModerationStatus(1L, ItemModerationStatus.ACTIVE);
     }
 
     @Test
     void shouldReturnItemById() {
-        when(itemRepo.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepo.findByItemIdAndModerationStatus(1L, ItemModerationStatus.ACTIVE)).thenReturn(Optional.of(item));
 
         Optional<ItemEntity> result = itemService.GetItem(1L);
 
@@ -436,7 +435,10 @@ class ItemServiceTest {
                 "Gaming Laptop",
                 ItemCategory.COMPUTERS,
                 null,
-                List.of("gaming")
+                List.of("gaming"),
+                List.of(), // primarySpecifications
+                List.of(), // secondarySpecifications
+                List.of()  // tertiarySpecifications
         );
 
         PricingRefreshResponse response = new PricingRefreshResponse(
@@ -590,6 +592,8 @@ class ItemServiceTest {
 
     @Test
     void shouldSearchWithNormalizedFiltersAndPagination() {
+        when(publicItemVisibilityService.filterUnavailableListings(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         ItemSearchRequest request = new ItemSearchRequest();
         request.setName("  gaming laptop  ");
         request.setCategory(ItemCategory.COMPUTERS);
@@ -658,13 +662,15 @@ class ItemServiceTest {
 
     @Test
     void shouldSendSentinelValuesWhenConditionAndLabelFiltersAreInactive() {
+        when(publicItemVisibilityService.filterUnavailableListings(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         ItemSearchRequest request = new ItemSearchRequest();
         request.setName("   ");
         request.setConditions(List.of());
         request.setLabels(Arrays.asList(null, " ", "  \t"));
         request.setSort(null);
 
-        Pageable expectedPageable = PageRequest.of(0, 24);
+        Pageable expectedPageable = PageRequest.of(0, 50);
         Page<ItemEntity> page = new PageImpl<>(List.of(item), expectedPageable, 1);
 
         when(itemRepo.searchItems(

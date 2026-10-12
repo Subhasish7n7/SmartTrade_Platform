@@ -33,6 +33,7 @@ public class CartService {
         cartItem.setDateAdded(LocalDateTime.now());
         return cartRepo.save(cartItem);
     }
+
     @Transactional
     public void removeFromCart(Long userId, Long itemId) {
         cartRepo.deleteByUser_userIdAndItem_itemId(userId, itemId);

@@ -1,6 +1,7 @@
 export interface LoginRequest {
   email: string
   password: string
+  rememberMe: boolean
 }
 
 export interface RegisterRequest {
@@ -19,5 +20,6 @@ export interface CurrentUser {
   name: string
   email: string
   phoneNo?: string
-  avatarUrl:string
+  avatarUrl: string
+  role: "USER" | "ADMIN"
 }

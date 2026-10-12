@@ -19,6 +19,25 @@ public class UpdateItemRequest {
     private String customCategory;
 
     private List<String> labels;
+
+    /**
+     * null = unchanged, empty list = clear this pricing tier
+     */
+    @Size(max = 5)
+    private List<String> primarySpecifications;
+
+    /**
+     * null = unchanged, empty list = clear this pricing tier
+     */
+    @Size(max = 8)
+    private List<String> secondarySpecifications;
+
+    /**
+     * null = unchanged, empty list = clear this pricing tier
+     */
+    @Size(max = 10)
+    private List<String> tertiarySpecifications;
+
     @Valid
     @Size(max = 8)
     private List<ItemImageRequest> images;

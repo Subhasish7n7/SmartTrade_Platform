@@ -11,8 +11,8 @@ import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.events.ItemPriceUpdatedEvent;
-import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.events.itemPriceFetch.ItemPriceUpdatedEvent;
+import smarttrade.backend.repository.item.ItemRepo;
 import smarttrade.backend.service.pricing.ItemPricingService;
 import smarttrade.backend.service.pricing.PriceEstimationService;
 import smarttrade.backend.service.pricing.PricingFetchResult;
@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

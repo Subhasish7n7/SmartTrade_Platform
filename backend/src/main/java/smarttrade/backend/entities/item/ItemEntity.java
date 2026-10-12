@@ -75,9 +75,26 @@ public class ItemEntity {
     private ItemCondition condition;
 
     @ElementCollection
-    @CollectionTable(name = "item_labels", joinColumns = @JoinColumn(name = "item_id"))
+    @CollectionTable(
+            name = "item_labels",
+            joinColumns = @JoinColumn(name = "item_id")
+    )
     @Column(name = "label")
     private List<String> labels;
+
+    /**
+     * Seller-declared pricing specifications stored in one collection table.
+     * Each row carries its influence tier so the database does not need one table
+     * per tier while the API can still expose separate primary/secondary/tertiary lists.
+     */
+    @ElementCollection
+    @CollectionTable(
+            name = "item_specifications",
+            joinColumns = @JoinColumn(name = "item_id")
+    )
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<ItemSpecification> specifications = new ArrayList<>();
 
     @Column(name = "custom_category")
     private String customCategory;
@@ -133,6 +150,11 @@ public class ItemEntity {
 
     @Column(name = "locked_by_trade")
     private Long lockedByTradeId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moderation_status", nullable = false, length = 20)
+    @Builder.Default
+    private ItemModerationStatus moderationStatus = ItemModerationStatus.ACTIVE;
 
     @Version
     private Long version;

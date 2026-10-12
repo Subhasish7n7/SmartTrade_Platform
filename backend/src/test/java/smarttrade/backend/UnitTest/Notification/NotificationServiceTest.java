@@ -22,6 +22,7 @@ import smarttrade.backend.entities.notification.NotificationType;
 import smarttrade.backend.repository.NotificationRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.service.NotificationService;
+import smarttrade.backend.service.user.UserPreferenceService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
 
 import java.time.LocalDateTime;
@@ -49,6 +50,10 @@ public class NotificationServiceTest {
 
     @Mock
     private ActiveConversationRegistry activeConversationRegistry;
+
+    @Mock
+    private UserPreferenceService userPreferenceService;
+
 
     @InjectMocks
     private NotificationService notificationService;
@@ -198,6 +203,7 @@ public class NotificationServiceTest {
 
     @Test
     void shouldCreateTradeAcceptedNotificationAndSendWebsocketUpdate() {
+        when(userPreferenceService.isNotificationEnabled(recipient.getUserId(), NotificationType.TRADE_ACCEPTED)).thenReturn(true);
         NotificationEntity saved = NotificationEntity.builder()
                 .id(10L)
                 .recipient(recipient)
@@ -266,6 +272,8 @@ public class NotificationServiceTest {
 
     @Test
     void shouldCreateCounterTradeOfferMessage() {
+        when(userPreferenceService.isNotificationEnabled(recipient.getUserId(), NotificationType.TRADE_OFFER_RECEIVED))
+                .thenReturn(true);
         when(notificationRepo.save(any(NotificationEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationMapper.map(any(NotificationEntity.class)))
@@ -321,6 +329,8 @@ public class NotificationServiceTest {
 
     @Test
     void shouldCreateChatNotificationWhenRecipientIsNotViewingConversation() {
+        when(userPreferenceService.isNotificationEnabled(recipient.getUserId(), NotificationType.CHAT_MESSAGE))
+                .thenReturn(true);
         when(activeConversationRegistry.isViewingConversation(2L, 500L))
                 .thenReturn(false);
         when(notificationRepo.save(any(NotificationEntity.class)))
@@ -357,6 +367,8 @@ public class NotificationServiceTest {
 
     @Test
     void shouldCreateSystemNotificationWithoutActor() {
+        when(userPreferenceService.isNotificationEnabled(recipient.getUserId(), NotificationType.SYSTEM))
+                .thenReturn(true);
         when(notificationRepo.save(any(NotificationEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationMapper.map(any(NotificationEntity.class)))

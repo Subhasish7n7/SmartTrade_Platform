@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.entities.item.ItemSpecification;
+import smarttrade.backend.entities.item.SpecificationTier;
+import smarttrade.backend.repository.item.ItemRepo;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,12 +77,26 @@ public class PricingJobService {
                 item.getItemName(),
                 item.getCategory(),
                 item.getCustomCategory(),
-                item.getLabels() == null ? List.of() : List.copyOf(item.getLabels())
+                item.getLabels() == null ? List.of() : List.copyOf(item.getLabels()),
+                specificationsFor(item, SpecificationTier.PRIMARY),
+                specificationsFor(item, SpecificationTier.SECONDARY),
+                specificationsFor(item, SpecificationTier.TERTIARY)
         );
 
         return PricingJobDecision.started(
                 item, currentVersion, nextPriceRefreshAt(item), job
         );
+    }
+
+    private List<String> specificationsFor(ItemEntity item, SpecificationTier tier) {
+        if (item.getSpecifications() == null || item.getSpecifications().isEmpty()) {
+            return List.of();
+        }
+
+        return item.getSpecifications().stream()
+                .filter(specification -> specification.getTier() == tier)
+                .map(ItemSpecification::getSpecification)
+                .toList();
     }
 
     public boolean isPriceFresh(ItemEntity item) {

@@ -46,7 +46,7 @@ public class UserMapperTest {
 
         // Mapper intentionally does not copy these fields.
         assertNull(result.getPassword());
-        assertEquals(0.0, result.getTrustScore());
+        assertEquals(500, result.getTrustScore());
         assertEquals(0, result.getTotalListings());
         assertEquals(0, result.getSuccessfulTrades());
         assertNull(result.getAvatar());

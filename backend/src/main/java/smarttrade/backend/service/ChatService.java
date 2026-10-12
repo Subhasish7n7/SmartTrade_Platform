@@ -16,8 +16,15 @@ import smarttrade.backend.entities.chat.ChatMessageEntity;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.*;
+import smarttrade.backend.repository.chat.ChatConversationRepo;
+import smarttrade.backend.repository.chat.ChatMessageRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
+import smarttrade.backend.service.user.UserPreferenceService;
+import smarttrade.backend.entities.user.UserPreferenceEntity;
+import smarttrade.backend.entities.user.MessagePermission;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
 import smarttrade.backend.websocket.ChatPresencePublisher;
 
@@ -42,6 +49,7 @@ public class ChatService {
     private final ChatMapper chatMapper;
     private final ChatPresencePublisher presencePublisher;
     private final TradeOfferRepo tradeOfferRepo;
+    private final UserPreferenceService userPreferenceService;
 
     private ChatConversationEntity getOrCreateConversation(UserEntity user1, UserEntity user2) {
 
@@ -96,16 +104,15 @@ public class ChatService {
                 conversationId
         );
 
-        if (!alreadyActive) {
-            presencePublisher.publish(
-                    conversationId,
-                    current.getUserId(),
-                    true
-            );
+        boolean visible = userPreferenceService.getForUser(current).isShowOnlineStatus();
+        if (!visible) {
+            presencePublisher.publish(conversationId, current.getUserId(), false);
+        } else if (!alreadyActive) {
+            presencePublisher.publish(conversationId, current.getUserId(), true);
         }
     }
 
-    public List<ChatConversationResponse> getInbox() {
+    public List<ChatConversationResponse> getInbox(Long requestedOtherUserId) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
         Long currentUserId = currentUser.getUserId();
@@ -124,9 +131,10 @@ public class ChatService {
 
         for (ChatConversationEntity conversation : conversations) {
 
-            ChatMessageEntity lastMessage = chatMessageRepo
-                    .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
-                    .orElse(null);
+            ChatMessageEntity lastMessage =
+                    chatMessageRepo
+                            .findTopByConversation_IdOrderByCreatedAtDesc(conversation.getId())
+                            .orElse(null);
 
             UserEntity otherUser =
                     conversation.getUser1().getUserId().equals(currentUserId)
@@ -174,7 +182,6 @@ public class ChatService {
          * Both normal trade offers and buy offers are TradeOfferEntity,
          * so one query covers both.
          */
-
         List<TradeOfferEntity> offers =
                 tradeOfferRepo.findBySender_UserIdOrReceiver_UserId(
                         currentUserId,
@@ -195,7 +202,8 @@ public class ChatService {
                             ? offer.getReceiver().getUserId()
                             : offer.getSender().getUserId();
 
-            TradeOfferEntity existing = latestOfferByUser.get(otherUserId);
+            TradeOfferEntity existing =
+                    latestOfferByUser.get(otherUserId);
 
             if (existing == null
                     || offer.getCreatedAt().isAfter(existing.getCreatedAt())) {
@@ -204,7 +212,8 @@ public class ChatService {
             }
         }
 
-        for (Map.Entry<Long, TradeOfferEntity> entry : latestOfferByUser.entrySet()) {
+        for (Map.Entry<Long, TradeOfferEntity> entry :
+                latestOfferByUser.entrySet()) {
 
             Long otherUserId = entry.getKey();
             TradeOfferEntity latestOffer = entry.getValue();
@@ -212,7 +221,7 @@ public class ChatService {
             LocalDateTime offerActivity = latestOffer.getCreatedAt();
 
             /*
-             * The normal/new case:
+             * Normal/new case:
              *
              * createTradeOffer/createBuyOffer now creates a chat message,
              * so this participant already exists in responsesByUser.
@@ -222,7 +231,8 @@ public class ChatService {
              */
             if (responsesByUser.containsKey(otherUserId)) {
 
-                LocalDateTime currentActivity = activityByUser.get(otherUserId);
+                LocalDateTime currentActivity =
+                        activityByUser.get(otherUserId);
 
                 if (currentActivity == null
                         || offerActivity.isAfter(currentActivity)) {
@@ -232,8 +242,8 @@ public class ChatService {
                      * if an offer exists later than the latest message,
                      * use the offer as the ordering activity.
                      *
-                     * For all newly-created offers the message timestamp
-                     * and offer timestamp will naturally be almost identical.
+                     * For newly-created offers the message timestamp and
+                     * offer timestamp will naturally be almost identical.
                      */
                     activityByUser.put(otherUserId, offerActivity);
                 }
@@ -282,21 +292,106 @@ public class ChatService {
         }
 
         /*
-         * 3. One inbox entry per user.
+         * 3. Direct profile/chat navigation.
          *
-         * Latest activity always comes first.
+         * The frontend can request the inbox for a specific user, for example:
+         *
+         *     GET /chat/inbox?otherUserId=42
+         *
+         * If that user is already present because of:
+         *   - an existing conversation, or
+         *   - an offer,
+         *
+         * then nothing new needs to be created.
+         *
+         * If they are not present at all, create a temporary inbox response.
+         *
+         * This does NOT create a ChatConversationEntity.
+         * The real conversation is created when the first message is sent.
+         */
+        if (requestedOtherUserId != null
+                && !requestedOtherUserId.equals(currentUserId)
+                && !responsesByUser.containsKey(requestedOtherUserId)) {
+
+            UserEntity otherUser =
+                    userRepo.findById(requestedOtherUserId)
+                            .orElseThrow(() ->
+                                    new IllegalArgumentException("User not found: " + requestedOtherUserId)
+                            );
+
+            Integer activeTradeCount =
+                    tradeRepo.countActiveTradesBetweenUsers(
+                            currentUserId,
+                            requestedOtherUserId
+                    );
+
+            ChatConversationResponse response =
+                    ChatConversationResponse.builder()
+                            .conversationId(null)
+                            .otherUserId(otherUser.getUserId())
+                            .otherUserName(otherUser.getName())
+                            .avatarUrl(
+                                    otherUser.getAvatar() != null
+                                            ? otherUser.getAvatar().getSecureUrl()
+                                            : null
+                            )
+                            .lastMessage(null)
+                            .lastMessageAt(null)
+                            .unreadCount(0)
+                            .activeTradeCount(activeTradeCount)
+                            .pinnedTradeId(null)
+                            .build();
+
+            responsesByUser.put(requestedOtherUserId, response);
+        }
+
+        /*
+         * 4. One inbox entry per user.
+         *
+         * If a specific user was requested by the frontend,
+         * that user is always placed first.
+         *
+         * Otherwise, normal latest-activity ordering is used.
          */
         return responsesByUser.entrySet()
                 .stream()
                 .sorted(
                         (left, right) -> {
+
+                            /*
+                             * Requested user always comes first.
+                             */
+                            if (requestedOtherUserId != null) {
+
+                                boolean leftIsRequested =
+                                        left.getKey()
+                                                .equals(requestedOtherUserId);
+
+                                boolean rightIsRequested =
+                                        right.getKey()
+                                                .equals(requestedOtherUserId);
+
+                                if (leftIsRequested && !rightIsRequested) {
+                                    return -1;
+                                }
+
+                                if (!leftIsRequested && rightIsRequested) {
+                                    return 1;
+                                }
+                            }
+
+                            /*
+                             * Normal inbox ordering:
+                             * latest activity first.
+                             */
                             LocalDateTime leftActivity =
                                     activityByUser.get(left.getKey());
 
                             LocalDateTime rightActivity =
                                     activityByUser.get(right.getKey());
 
-                            if (leftActivity == null && rightActivity == null) {
+                            if (leftActivity == null
+                                    && rightActivity == null) {
                                 return 0;
                             }
 
@@ -315,57 +410,73 @@ public class ChatService {
                 .toList();
     }
 
+
     public void sendMessage(Long otherUserId, String message) {
+        sendMessageInternal(otherUserId, message, false);
+    }
 
+    /**
+     * System-generated initial messages attached to a valid trade/buy offer bypass direct-chat restrictions.
+     */
+    public void sendTradeMessage(Long otherUserId, String message) {
+        sendMessageInternal(otherUserId, message, true);
+    }
+
+    private void sendMessageInternal(Long otherUserId, String message, boolean marketplaceMessage) {
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
+        UserEntity otherUser = userRepo.findById(otherUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        UserEntity otherUser = userRepo.findById(otherUserId).orElseThrow(() ->
-                new IllegalArgumentException("User not found"));
+        if (!marketplaceMessage) {
+            UserPreferenceEntity preferences = userPreferenceService.getForUser(otherUser);
+            MessagePermission permission = preferences.getMessagePermission();
+            if (permission == MessagePermission.NOBODY) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "This user is not accepting direct messages.");
+            }
+            if (permission == MessagePermission.TRADERS_ONLY) {
+                Integer activeTrades = tradeRepo.countActiveTradesBetweenUsers(
+                        currentUser.getUserId(), otherUser.getUserId());
+                if (activeTrades == null || activeTrades <= 0) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "This user only accepts messages from traders.");
+                }
+            }
+        }
 
         ChatConversationEntity conversation = getOrCreateConversation(currentUser, otherUser);
-
         ChatMessageEntity chatMessage = ChatMessageEntity.builder()
                 .sender(currentUser)
                 .conversation(conversation)
                 .message(message)
                 .build();
-
         chatMessage = chatMessageRepo.save(chatMessage);
 
         ChatMessageResponse response = chatMapper.toMessageResponse(chatMessage);
-        Integer activeTradeCount = tradeRepo
-                .countActiveTradesBetweenUsers(currentUser.getUserId(), otherUser.getUserId());
-
-
+        Integer activeTradeCount = tradeRepo.countActiveTradesBetweenUsers(
+                currentUser.getUserId(), otherUser.getUserId());
         Integer receiverUnreadCount = getUnreadCount(conversation, otherUser);
-        ChatConversationResponse receiverConversation =
-                chatMapper.toConversationResponse(
-                        conversation, otherUser, chatMessage, activeTradeCount, receiverUnreadCount);
-
-        ChatConversationResponse senderConversation =
-                chatMapper.toConversationResponse(
-                        conversation, currentUser, chatMessage, activeTradeCount, 0);
-
+        ChatConversationResponse receiverConversation = chatMapper.toConversationResponse(
+                conversation, otherUser, chatMessage, activeTradeCount, receiverUnreadCount);
+        ChatConversationResponse senderConversation = chatMapper.toConversationResponse(
+                conversation, currentUser, chatMessage, activeTradeCount, 0);
         ChatEvent receiverEvent = createChatEvent(response, receiverConversation);
-
         ChatEvent senderEvent = createChatEvent(response, senderConversation);
 
-        messagingTemplate.convertAndSendToUser(
-                otherUser.getEmail(),
-                "/queue/messages",
-                receiverEvent
-        );
-        messagingTemplate.convertAndSendToUser(
-                currentUser.getEmail(),
-                "/queue/messages",
-                senderEvent
-        );
+        messagingTemplate.convertAndSendToUser(otherUser.getEmail(), "/queue/messages", receiverEvent);
+        messagingTemplate.convertAndSendToUser(currentUser.getEmail(), "/queue/messages", senderEvent);
+        notificationService.notifyChatMessage(currentUser, otherUser, conversation.getId());
+    }
 
-        notificationService.notifyChatMessage(
-                currentUser,
-                otherUser,
-                conversation.getId()
-        );
+    /**
+     * Re-publishes presence visibility for all conversations currently active for this user.
+     */
+    public void refreshCurrentPresenceVisibility() {
+        UserEntity currentUser = authenticatedUserService.getCurrentUser();
+        boolean visible = userPreferenceService.getForUser(currentUser).isShowOnlineStatus();
+        for (Long conversationId : activeConversationRegistry.getActiveConversationIds(currentUser.getUserId())) {
+            presencePublisher.publish(conversationId, currentUser.getUserId(), visible);
+        }
     }
 
     public UserEntity getUser(Long userId) {

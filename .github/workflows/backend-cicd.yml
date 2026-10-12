@@ -1,6 +1,13 @@
 name: Backend CI/CD
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/**"
+
   workflow_dispatch:
 
 permissions:
@@ -18,23 +25,26 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
+          cache-dependency-path: backend/pom.xml
 
       - name: Make Maven wrapper executable
         run: chmod +x backend/mvnw
 
-      - name: Run tests
+      - name: Run tests and verify build
         working-directory: backend
-        run: ./mvnw -B test
+        run: ./mvnw -B clean verify
 
       - name: Log in to Docker Hub
+        if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v7
         with:
           context: ./backend
@@ -44,3 +54,9 @@ jobs:
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/smarttrade-backend:latest
             ${{ vars.DOCKERHUB_USERNAME }}/smarttrade-backend:${{ github.sha }}
+
+      - name: Trigger Render deployment
+        if: github.ref == 'refs/heads/main'
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 5 --request POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

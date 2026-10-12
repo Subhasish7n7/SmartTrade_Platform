@@ -11,10 +11,10 @@ import smarttrade.backend.dto.item.ItemImageRequest;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemImageEntity;
 import smarttrade.backend.entities.item.ItemImageStatus;
-import smarttrade.backend.events.ItemImageCleanupRequestedEvent;
+import smarttrade.backend.events.itemImageCleanup.ItemImageCleanupRequestedEvent;
 import smarttrade.backend.exceptions.ForbiddenOperationException;
-import smarttrade.backend.repository.ItemImageRepository;
-import smarttrade.backend.service.ItemImageService;
+import smarttrade.backend.repository.item.ItemImageRepository;
+import smarttrade.backend.service.item.ItemImageService;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

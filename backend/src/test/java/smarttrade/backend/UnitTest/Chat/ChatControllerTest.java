@@ -112,7 +112,7 @@ public class ChatControllerTest {
                         .otherUserName("Other").lastMessage("Hello")
                         .unreadCount(2).activeTradeCount(1).build();
 
-        when(chatService.getInbox()).thenReturn(List.of(response));
+        when(chatService.getInbox(null)).thenReturn(List.of(response));
 
         mockMvc.perform(get("/chat/inbox"))
                 .andExpect(status().isOk())
@@ -123,7 +123,7 @@ public class ChatControllerTest {
                 .andExpect(jsonPath("$[0].unreadCount").value(2))
                 .andExpect(jsonPath("$[0].activeTradeCount").value(1));
 
-        verify(chatService).getInbox();
+        verify(chatService).getInbox(null);
     }
 
     @Test

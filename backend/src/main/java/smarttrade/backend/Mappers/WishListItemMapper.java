@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import smarttrade.backend.dto.WishlistItemDto;
 import smarttrade.backend.entities.WishlistItemEntity;
-import smarttrade.backend.repository.ItemRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.repository.item.ItemRepo;
+import smarttrade.backend.repository.user.UserRepo;
 
 import java.util.List;
 
@@ -39,7 +39,7 @@ public class WishListItemMapper {
     }
 
     public WishlistItemDto createDto(Long userId, Long itemId) {
-        WishlistItemDto dto= new WishlistItemDto();
+        WishlistItemDto dto = new WishlistItemDto();
         dto.setUserId(userId);
         dto.setItemId(itemId);
         return dto;

@@ -6,15 +6,12 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import smarttrade.backend.dto.item.CreateItemRequest;
-import smarttrade.backend.dto.item.ItemImageRequest;
-import smarttrade.backend.dto.item.ItemImageResponse;
-import smarttrade.backend.dto.item.ItemResponse;
-import smarttrade.backend.dto.item.SellerSummaryDto;
-import smarttrade.backend.dto.item.UpdateItemRequest;
+import smarttrade.backend.dto.item.*;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemImageEntity;
 import smarttrade.backend.entities.item.ItemImageStatus;
+import smarttrade.backend.entities.item.ItemSpecification;
+import smarttrade.backend.entities.item.SpecificationTier;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -41,13 +38,7 @@ public class ItemMapper {
         if (entity == null) return null;
 
         ItemResponse dto = new ItemResponse();
-        SellerSummaryDto seller = new SellerSummaryDto();
-
-        seller.setUserId(entity.getUser().getUserId());
-        seller.setName(entity.getUser().getName());
-        seller.setTrustScore(entity.getUser().getTrustScore());
-        seller.setTotalListings(entity.getUser().getTotalListings());
-        seller.setSuccessfulTrades(entity.getUser().getSuccessfulTrades());
+        SellerSummaryDto seller = getSellerSummaryDto(entity);
 
         dto.setSeller(seller);
         dto.setItemId(entity.getItemId());
@@ -89,6 +80,19 @@ public class ItemMapper {
         dto.setCategory(entity.getCategory());
         dto.setCondition(entity.getCondition());
         dto.setCustomCategory(entity.getCustomCategory());
+
+        dto.setPrimarySpecifications(
+                mapSpecificationTier(entity.getSpecifications(), SpecificationTier.PRIMARY)
+        );
+
+        dto.setSecondarySpecifications(
+                mapSpecificationTier(entity.getSpecifications(), SpecificationTier.SECONDARY)
+        );
+
+        dto.setTertiarySpecifications(
+                mapSpecificationTier(entity.getSpecifications(), SpecificationTier.TERTIARY)
+        );
+
         dto.setDescription(entity.getDescription());
         dto.setLabels(entity.getLabels());
         dto.setForSale(entity.isForSale());
@@ -108,6 +112,42 @@ public class ItemMapper {
         return dto;
     }
 
+    private List<String> mapSpecificationTier(
+            List<ItemSpecification> specifications,
+            SpecificationTier tier
+    ) {
+        if (specifications == null || specifications.isEmpty()) {
+            return List.of();
+        }
+
+        return specifications.stream()
+                .filter(specification ->
+                        specification != null
+                                && specification.getTier() == tier
+                )
+                .sorted(Comparator.comparingInt(ItemSpecification::getSortOrder))
+                .map(ItemSpecification::getSpecification)
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private static SellerSummaryDto getSellerSummaryDto(ItemEntity entity) {
+        SellerSummaryDto seller = new SellerSummaryDto();
+
+        seller.setUserId(entity.getUser().getUserId());
+        seller.setName(entity.getUser().getName());
+        seller.setTrustScore(entity.getUser().getTrustScore());
+        seller.setTotalListings(entity.getUser().getTotalListings());
+        seller.setSuccessfulTrades(entity.getUser().getSuccessfulTrades());
+        seller.setAvatar(
+                entity.getUser().getAvatar() != null
+                        ? entity.getUser().getAvatar().getSecureUrl()
+                        : null
+        );
+        return seller;
+    }
 
     public ItemEntity fromCreateRequest(CreateItemRequest dto) {
         if (dto == null) return null;
@@ -120,6 +160,11 @@ public class ItemMapper {
         entity.setCustomCategory(dto.getCustomCategory());
         entity.setDescription(dto.getDescription());
         entity.setLabels(dto.getLabels());
+        entity.setSpecifications(toSpecifications(
+                dto.getPrimarySpecifications(),
+                dto.getSecondarySpecifications(),
+                dto.getTertiarySpecifications()
+        ));
         entity.setForSale(dto.isForSale());
         entity.setForTrade(dto.isForTrade());
         entity.setCity(dto.getCity());
@@ -184,6 +229,15 @@ public class ItemMapper {
         if (dto.getLabels() != null) {
             entity.setLabels(dto.getLabels());
         }
+        if (dto.getPrimarySpecifications() != null) {
+            replaceSpecificationTier(entity, SpecificationTier.PRIMARY, dto.getPrimarySpecifications());
+        }
+        if (dto.getSecondarySpecifications() != null) {
+            replaceSpecificationTier(entity, SpecificationTier.SECONDARY, dto.getSecondarySpecifications());
+        }
+        if (dto.getTertiarySpecifications() != null) {
+            replaceSpecificationTier(entity, SpecificationTier.TERTIARY, dto.getTertiarySpecifications());
+        }
         if (dto.getForSale() != null) {
             entity.setForSale(dto.getForSale());
         }
@@ -209,5 +263,72 @@ public class ItemMapper {
                     )
             );
         }
+    }
+
+    private List<ItemSpecification> toSpecifications(
+            List<String> primary,
+            List<String> secondary,
+            List<String> tertiary
+    ) {
+        List<ItemSpecification> specifications = new java.util.ArrayList<>();
+        int sortOrder = 0;
+
+        sortOrder = appendSpecifications(specifications, SpecificationTier.PRIMARY, primary, sortOrder);
+        sortOrder = appendSpecifications(specifications, SpecificationTier.SECONDARY, secondary, sortOrder);
+        appendSpecifications(specifications, SpecificationTier.TERTIARY, tertiary, sortOrder);
+
+        return specifications;
+    }
+
+    private int appendSpecifications(
+            List<ItemSpecification> target,
+            SpecificationTier tier,
+            List<String> values,
+            int sortOrder
+    ) {
+        if (values == null) return sortOrder;
+
+        for (String value : cleanSpecifications(values)) {
+            target.add(new ItemSpecification(tier, value, sortOrder++));
+        }
+        return sortOrder;
+    }
+
+    private void replaceSpecificationTier(
+            ItemEntity entity,
+            SpecificationTier tier,
+            List<String> values
+    ) {
+        List<ItemSpecification> existing = entity.getSpecifications() == null
+                ? new java.util.ArrayList<>()
+                : new java.util.ArrayList<>(entity.getSpecifications());
+
+        existing.removeIf(specification -> specification.getTier() == tier);
+
+        List<ItemSpecification> replacement = new java.util.ArrayList<>();
+        int sortOrder = 0;
+        for (ItemSpecification specification : existing) {
+            specification.setSortOrder(sortOrder++);
+        }
+        for (String value : cleanSpecifications(values)) {
+            replacement.add(new ItemSpecification(tier, value, sortOrder++));
+        }
+
+        existing.addAll(replacement);
+        existing.sort(java.util.Comparator.comparingInt(ItemSpecification::getSortOrder));
+        entity.setSpecifications(existing);
+    }
+
+    private List<String> cleanSpecifications(List<String> specifications) {
+        if (specifications == null || specifications.isEmpty()) {
+            return List.of();
+        }
+
+        return specifications.stream()
+                .filter(specification -> specification != null && !specification.isBlank())
+                .map(String::trim)
+                .filter(specification -> !specification.isBlank())
+                .distinct()
+                .toList();
     }
 }

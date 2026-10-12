@@ -1,20 +1,18 @@
 package smarttrade.backend.entities.trade;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import smarttrade.backend.entities.user.UserEntity;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "trades")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(name = "trades")
 public class TradeEntity {
 
     @Id
@@ -28,11 +26,8 @@ public class TradeEntity {
     private UserEntity receiver;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TradeStatus status;
-
-    /*
-     * Two-step completion confirmation.
-     */
 
     @Column(nullable = false)
     @Builder.Default
@@ -45,4 +40,12 @@ public class TradeEntity {
     private LocalDateTime completionRequestedAt;
 
     private LocalDateTime createdAt;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime completedAt;
+    private LocalDateTime cancelledAt;
+    private LocalDateTime disputedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "cancelled_by_user_id")
+    private UserEntity cancelledBy;
 }

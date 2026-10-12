@@ -15,6 +15,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -29,8 +31,11 @@ import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.repository.ItemRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.entities.item.ItemSpecification;
+import smarttrade.backend.entities.item.SpecificationTier;
+import smarttrade.backend.repository.TrustScoreHistoryRepo;
+import smarttrade.backend.repository.item.ItemRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.security.JwtService;
 import smarttrade.backend.service.pricing.PriceEstimationService;
@@ -39,8 +44,10 @@ import smarttrade.backend.service.pricing.PricingRefreshOutcome;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -53,6 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.servlet.http.Cookie;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
 import java.util.UUID;
 
 @SpringBootTest
@@ -86,6 +94,7 @@ class ItemControllerIntegrationTest {
         registry.add("serp.api.key", () -> "dummy");
         registry.add("pricing.refresh-window-hours", () -> "168");
     }
+
     private RequestPostProcessor csrfCookie() {
         String csrfToken = UUID.randomUUID().toString();
 
@@ -128,6 +137,12 @@ class ItemControllerIntegrationTest {
     private UserRepo userRepo;
 
     @Autowired
+    private TrustScoreHistoryRepo trustScoreHistoryRepo;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
     private JwtService jwtService;
 
     @MockitoBean
@@ -144,6 +159,8 @@ class ItemControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         itemRepo.deleteAll();
+        // Trust history rows reference users and must be removed first.
+        trustScoreHistoryRepo.deleteAll();
         userRepo.deleteAll();
 
         user = userRepo.save(
@@ -306,6 +323,156 @@ class ItemControllerIntegrationTest {
         ItemEntity updated = itemRepo.findById(saved.getItemId()).orElseThrow();
         assertTrue("Updated Laptop".equals(updated.getItemName()));
         assertTrue("Updated description".equals(updated.getDescription()));
+    }
+
+    @Test
+    void shouldUpdateAndPersistSpecificationsAcrossAllTiers() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "ASUS Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setPrimarySpecifications(List.of(" RTX 4060 ", "Ryzen 9", "rtx 4060"));
+        request.setSecondarySpecifications(List.of("1TB SSD", "165Hz"));
+        request.setTertiarySpecifications(List.of("WiFi 6"));
+
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pricingStatus").value(ItemPricingStatus.PENDING.name()));
+
+        ItemEntity updated = itemRepo.findById(saved.getItemId()).orElseThrow();
+        assertEquals(2L, updated.getPricingVersion());
+
+        assertEquals(
+                List.of("RTX 4060", "Ryzen 9"),
+                specificationValuesFromDatabase(saved.getItemId(), SpecificationTier.PRIMARY)
+        );
+        assertEquals(
+                List.of("1TB SSD", "165Hz"),
+                specificationValuesFromDatabase(saved.getItemId(), SpecificationTier.SECONDARY)
+        );
+        assertEquals(
+                List.of("WiFi 6"),
+                specificationValuesFromDatabase(saved.getItemId(), SpecificationTier.TERTIARY)
+        );
+    }
+
+    @Test
+    void shouldLeaveSpecificationsUnchangedWhenTierFieldsAreNull() throws Exception {
+        ItemEntity saved = createItem(
+                user, "ASUS Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD
+        );
+        setExistingSpecifications(saved);
+        saved = itemRepo.save(saved);
+        Long itemId = saved.getItemId();
+
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setDescription("Updated description only");
+        // All specification tier fields are intentionally null: null means unchanged.
+
+        mockMvc.perform(
+                        patch("/items/" + itemId)
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("Updated description only"))
+                .andExpect(jsonPath("$.pricingStatus").value(ItemPricingStatus.READY.name()));
+
+        ItemEntity updated = itemRepo.findById(itemId).orElseThrow();
+        assertEquals(1L, updated.getPricingVersion());
+        assertEquals(List.of("RTX 4060", "Ryzen 9"),
+                specificationValuesFromDatabase(itemId, SpecificationTier.PRIMARY));
+        assertEquals(List.of("1TB SSD"),
+                specificationValuesFromDatabase(itemId, SpecificationTier.SECONDARY));
+        assertEquals(List.of("WiFi 6"),
+                specificationValuesFromDatabase(itemId, SpecificationTier.TERTIARY));
+    }
+
+    @Test
+    void shouldClearOnlySpecificationTierSuppliedAsEmptyList() throws Exception {
+        ItemEntity saved = createItem(
+                user, "ASUS Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD
+        );
+        setExistingSpecifications(saved);
+        saved = itemRepo.save(saved);
+        Long itemId = saved.getItemId();
+
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setPrimarySpecifications(List.of());
+        // Secondary and tertiary remain null, so those tiers must be preserved.
+
+        mockMvc.perform(
+                        patch("/items/" + itemId)
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pricingStatus").value(ItemPricingStatus.PENDING.name()));
+
+        ItemEntity updated = itemRepo.findById(itemId).orElseThrow();
+        assertEquals(2L, updated.getPricingVersion());
+        assertEquals(List.of(), specificationValuesFromDatabase(itemId, SpecificationTier.PRIMARY));
+        assertEquals(List.of("1TB SSD"),
+                specificationValuesFromDatabase(itemId, SpecificationTier.SECONDARY));
+        assertEquals(List.of("WiFi 6"),
+                specificationValuesFromDatabase(itemId, SpecificationTier.TERTIARY));
+    }
+
+    @Test
+    void shouldRejectSpecificationListsThatExceedTierLimits() throws Exception {
+        ItemEntity saved = itemRepo.save(
+                createItem(user, "ASUS Laptop", 50000, ItemCategory.COMPUTERS, ItemCondition.GOOD)
+        );
+
+        UpdateItemRequest tooManyPrimary = new UpdateItemRequest();
+        tooManyPrimary.setPrimarySpecifications(
+                List.of("P1", "P2", "P3", "P4", "P5", "P6")
+        );
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(tooManyPrimary))
+                )
+                .andExpect(status().isBadRequest());
+
+        UpdateItemRequest tooManySecondary = new UpdateItemRequest();
+        tooManySecondary.setSecondarySpecifications(
+                List.of("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
+        );
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(tooManySecondary))
+                )
+                .andExpect(status().isBadRequest());
+
+        UpdateItemRequest tooManyTertiary = new UpdateItemRequest();
+        tooManyTertiary.setTertiarySpecifications(
+                List.of("T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11")
+        );
+        mockMvc.perform(
+                        patch("/items/" + saved.getItemId())
+                                .with(csrfCookie())
+                                .cookie(new Cookie(CookieService.ACCESS_COOKIE, token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(tooManyTertiary))
+                )
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -571,6 +738,41 @@ class ItemControllerIntegrationTest {
 
         item.setLocation(point(85.8245, 20.2961));
         return item;
+    }
+
+    private void setExistingSpecifications(ItemEntity item) {
+        item.setSpecifications(new java.util.ArrayList<>(List.of(
+                new ItemSpecification(SpecificationTier.PRIMARY, "RTX 4060", 0),
+                new ItemSpecification(SpecificationTier.PRIMARY, "Ryzen 9", 1),
+                new ItemSpecification(SpecificationTier.SECONDARY, "1TB SSD", 2),
+                new ItemSpecification(SpecificationTier.TERTIARY, "WiFi 6", 3)
+        )));
+    }
+
+    /**
+     * Load specification values inside a transaction because ItemEntity.specifications
+     * is a lazy collection. The returned strings are materialized before the session closes.
+     */
+    private List<String> specificationValuesFromDatabase(
+            Long itemId,
+            SpecificationTier tier
+    ) {
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            ItemEntity persisted = itemRepo.findById(itemId).orElseThrow();
+            return specificationValues(persisted, tier);
+        });
+    }
+
+    private List<String> specificationValues(ItemEntity item, SpecificationTier tier) {
+        if (item.getSpecifications() == null) {
+            return List.of();
+        }
+
+        return item.getSpecifications().stream()
+                .filter(specification -> specification.getTier() == tier)
+                .sorted(Comparator.comparingInt(ItemSpecification::getSortOrder))
+                .map(ItemSpecification::getSpecification)
+                .toList();
     }
 
     private Point point(double longitude, double latitude) {

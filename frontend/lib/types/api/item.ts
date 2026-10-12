@@ -28,29 +28,12 @@ export const ITEM_CATEGORIES = [
 
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number]
 
-export const ITEM_CONDITIONS = [
-  "NEW",
-  "LIKE_NEW",
-  "GOOD",
-  "FAIR",
-  "POOR",
-] as const
-
+export const ITEM_CONDITIONS = ["NEW", "LIKE_NEW", "GOOD", "FAIR", "POOR"] as const
 export type ItemCondition = (typeof ITEM_CONDITIONS)[number]
-
 export type ListingType = "SALE" | "TRADE" | "BOTH"
 
-export type ItemPricingStatus =
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "READY"
-  | "FAILED"
-
-export type PricingRefreshOutcome =
-  | "STARTED"
-  | "ALREADY_RUNNING"
-  | "ALREADY_FRESH"
-  | "NOT_FOUND"
+export type ItemPricingStatus = "PENDING" | "IN_PROGRESS" | "READY" | "FAILED"
+export type PricingRefreshOutcome = "STARTED" | "ALREADY_RUNNING" | "ALREADY_FRESH" | "NOT_FOUND"
 
 export type PricingRefreshResponse = {
   itemId: number
@@ -67,40 +50,39 @@ export type PricingRefreshResponse = {
   message: string
 }
 
-export type ItemSort =
-  | "RELEVANCE"
-  | "PRICE_LOW_TO_HIGH"
-  | "PRICE_HIGH_TO_LOW"
-  | "NEWEST"
-  | "DISTANCE"
+export type ItemSort = "RELEVANCE" | "PRICE_LOW_TO_HIGH" | "PRICE_HIGH_TO_LOW" | "NEWEST" | "DISTANCE"
 
 export interface ItemImageResponse {
   id: number
   secureUrl: string
-  publicId: string
-  assetId: string
-  width: number
-  height: number
-  format: string
-  bytes: number
+  publicId: string | null
+  assetId: string | null
+  width: number | null
+  height: number | null
+  format: string | null
+  bytes: number | null
   sortOrder: number
   createdAt: string
 }
 
+/**
+ * Persisted legacy images can have missing Cloudinary metadata. Newly uploaded
+ * images still carry complete metadata from uploadImage(). Keeping this type
+ * nullable matches the response contract and avoids fabricated values/casts.
+ */
 export interface ItemImageRequest {
   id: number | null
   secureUrl: string
-  publicId: string
-  assetId: string
-  width: number
-  height: number
-  format: string
-  bytes: number
+  publicId: string | null
+  assetId: string | null
+  width: number | null
+  height: number | null
+  format: string | null
+  bytes: number | null
   sortOrder: number
 }
 
-export interface ItemImageDraft extends Omit<ItemImageRequest, "id"> {
-  id: number | null
+export interface ItemImageDraft extends ItemImageRequest {
   deleteToken?: string | null
 }
 
@@ -121,6 +103,9 @@ export interface ItemResponse {
   condition: ItemCondition
   customCategory: string | null
   labels: string[]
+  primarySpecifications?: string[] | null
+  secondarySpecifications?: string[] | null
+  tertiarySpecifications?: string[] | null
   images: ItemImageResponse[]
   latitude: number | null
   longitude: number | null
@@ -198,6 +183,7 @@ export interface ItemSearchResponse {
 export interface SellerUI {
   userId: number
   name: string
+  avatar: string | null
   trustScore: number
   totalListings: number
   successfulTrades: number

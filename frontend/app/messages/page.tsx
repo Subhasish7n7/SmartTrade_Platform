@@ -1,11 +1,10 @@
-import { Navbar } from "@/components/marketplace/navbar";
-import { ChatPageClient } from "@/components/marketplace/chat/chat-page-client";
-import { requireUser } from "@/lib/auth/require-user";
+import { ChatPageClient } from "@/components/chat/chat-page-client"
+import { Navbar } from "@/components/marketplace/navbar"
+import { requireUser } from "@/lib/auth/require-user"
 
 export default async function MessagesPage() {
   const currentPath = "/messages"
   const user = await requireUser(currentPath)
-  
 
   return (
     <div className="h-screen overflow-hidden bg-background">
@@ -14,5 +13,5 @@ export default async function MessagesPage() {
         <ChatPageClient currentUserId={user?.id} />
       </main>
     </div>
-  );
+  )
 }

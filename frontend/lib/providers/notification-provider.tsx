@@ -134,6 +134,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     void refreshNotifications()
   }, [refreshNotifications])
+  React.useEffect(() => {
+    const refreshAfterPageMutation = () => {
+      void refreshNotifications().catch((error) => {
+        console.error("Failed to refresh notifications after a page action", error)
+      })
+    }
+
+    window.addEventListener("smarttrade:notifications-changed", refreshAfterPageMutation)
+    return () => window.removeEventListener("smarttrade:notifications-changed", refreshAfterPageMutation)
+  }, [refreshNotifications])
 
   React.useEffect(() => {
     const subscribe = () => {

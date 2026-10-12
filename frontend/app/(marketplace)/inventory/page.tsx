@@ -1,16 +1,30 @@
 import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/lib/api/profile/server"
-import { getItemsByUser } from "@/lib/api/items/server"
+import { getMyInventory } from "@/lib/api/items/server"
+import type { ItemResponse } from "@/lib/types/api/item"
 import { InventoryPage } from "@/components/marketplace/inventory/inventory-page"
 
-export default async function InventoryRoute() {
-  try {
-    const profile = await getMyProfile()
-    const items = await getItemsByUser(profile.id)
+function getHttpStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object" || !("response" in error)) return undefined
+  const response = (error as { response?: { status?: unknown } }).response
+  return typeof response?.status === "number" ? response.status : undefined
+}
 
-    return <InventoryPage profile={profile} items={items} isOwner />
-  } catch {
-    redirect("/login?redirect=%2Finventory")
+export default async function InventoryRoute() {
+  let profile: Awaited<ReturnType<typeof getMyProfile>>
+  let items: ItemResponse[]
+
+  try {
+    profile = await getMyProfile()
+    items = await getMyInventory()
+  } catch (error) {
+
+    if (getHttpStatus(error) === 401) {
+      redirect("/login?redirect=%2Finventory")
+    }
+    throw error
   }
+
+  return <InventoryPage profile={profile} items={items} isOwner />
 }

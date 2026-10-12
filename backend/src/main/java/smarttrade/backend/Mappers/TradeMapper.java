@@ -9,7 +9,7 @@ import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 
 import java.util.Comparator;
@@ -23,7 +23,6 @@ public class TradeMapper {
     private final TradeOfferRepo tradeOfferRepo;
 
     private TradeItemResponse mapItem(ItemEntity item) {
-
         return TradeItemResponse.builder()
                 .itemId(item.getItemId())
                 .name(item.getItemName())
@@ -36,9 +35,11 @@ public class TradeMapper {
                 )
                 .userPrice(item.getUserPrice())
                 .systemGeneratedPrice(item.getGeneratedPrice())
+                .newPrice(item.getNewPrice())
                 .condition(item.getCondition())
                 .build();
     }
+
     public TradeOfferResponse mapFromEntity(TradeOfferEntity entity) {
 
         if (entity == null) {
@@ -51,15 +52,15 @@ public class TradeMapper {
                 .receiverId(entity.getReceiver().getUserId())
 
                 .senderItems(entity.getSenderItems()
-                                .stream()
-                                .map(this::mapItem)
-                                .toList()
+                        .stream()
+                        .map(this::mapItem)
+                        .toList()
                 )
 
                 .receiverItems(entity.getReceiverItems()
-                                .stream()
-                                .map(this::mapItem)
-                                .toList()
+                        .stream()
+                        .map(this::mapItem)
+                        .toList()
                 )
 
                 .cashAdjustment(entity.getCashAdjustment())
@@ -71,11 +72,11 @@ public class TradeMapper {
     public TradeInboxResponse mapInboxTrade(TradeEntity trade, UserEntity currentUser, TradeOfferEntity offer) {
 
         UserEntity otherUser = trade.getInitiator().getUserId()
-                        .equals(currentUser.getUserId()) ? trade.getReceiver() : trade.getInitiator();
-        List<ItemEntity> yourItems=offer.getSender().getUserId()
-                .equals(currentUser.getUserId())?offer.getSenderItems():offer.getReceiverItems();
-        List<ItemEntity> theirItems=offer.getSender().getUserId()
-                .equals(currentUser.getUserId())?offer.getReceiverItems():offer.getSenderItems();
+                .equals(currentUser.getUserId()) ? trade.getReceiver() : trade.getInitiator();
+        List<ItemEntity> yourItems = offer.getSender().getUserId()
+                .equals(currentUser.getUserId()) ? offer.getSenderItems() : offer.getReceiverItems();
+        List<ItemEntity> theirItems = offer.getSender().getUserId()
+                .equals(currentUser.getUserId()) ? offer.getReceiverItems() : offer.getSenderItems();
         int yourValue = yourItems.stream()
                 .mapToInt(ItemEntity::getUserPrice)
                 .sum();
@@ -97,17 +98,29 @@ public class TradeMapper {
                 .latestOffer(mapFromEntity(offer))
                 .build();
     }
-    public TradeDetailsResponse mapTradeDetails(TradeEntity trade,
-                            TradeOfferResponse offer, List<TradeHistoryResponse> history) {
 
+    public TradeDetailsResponse mapTradeDetails(
+            TradeEntity trade,
+            TradeOfferResponse offer,
+            List<TradeHistoryResponse> history
+    ) {
         return TradeDetailsResponse.builder()
                 .tradeId(trade.getTradeId())
                 .initiatorId(trade.getInitiator().getUserId())
                 .initiatorName(trade.getInitiator().getName())
+                .initiatorTrustScore(trade.getInitiator().getTrustScore())
                 .receiverId(trade.getReceiver().getUserId())
                 .receiverName(trade.getReceiver().getName())
+                .receiverTrustScore(trade.getReceiver().getTrustScore())
                 .status(trade.getStatus().name())
                 .createdAt(trade.getCreatedAt())
+                .acceptedAt(trade.getAcceptedAt())
+                .initiatorCompletionConfirmed(trade.getInitiatorCompletionConfirmed())
+                .receiverCompletionConfirmed(trade.getReceiverCompletionConfirmed())
+                .completionRequestedAt(trade.getCompletionRequestedAt())
+                .completedAt(trade.getCompletedAt())
+                .cancelledAt(trade.getCancelledAt())
+                .disputedAt(trade.getDisputedAt())
                 .offer(offer)
                 .history(history)
                 .build();

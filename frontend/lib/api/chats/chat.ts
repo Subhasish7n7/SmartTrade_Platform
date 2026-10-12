@@ -30,8 +30,12 @@ export async function getMessages(otherUserId: number, page = 0, size = 40) {
   const response = await api.get<PageResponse<ChatMessageResponse>>(`/chat/${otherUserId}/messages?page=${page}&size=${size}`)
   return response.data
 }
-export async function getInbox() {
-  const response = await api.get<ChatConversationResponse[]>("/chat/inbox")
+export async function getInbox(otherUserId?: number) {
+  const response = await api.get<ChatConversationResponse[]>("/chat/inbox", {
+    params: {
+      otherUserId,
+    },
+  })
 
   return response.data
 }

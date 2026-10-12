@@ -18,7 +18,7 @@ import smarttrade.backend.entities.item.ItemImageStatus;
 import smarttrade.backend.entities.trade.TradeEntity;
 import smarttrade.backend.entities.trade.TradeOfferEntity;
 import smarttrade.backend.entities.trade.TradeStatus;
-import smarttrade.backend.repository.TradeOfferRepo;
+import smarttrade.backend.repository.trades.TradeOfferRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 
 import java.time.LocalDateTime;

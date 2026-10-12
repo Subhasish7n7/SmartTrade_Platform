@@ -20,7 +20,7 @@ import smarttrade.backend.entities.notification.NotificationEntity;
 import smarttrade.backend.entities.notification.NotificationResourceType;
 import smarttrade.backend.entities.notification.NotificationType;
 import smarttrade.backend.repository.NotificationRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.security.JwtService;
 

@@ -1,9 +1,11 @@
 import { CalendarDays, Clock, MapPin, Package, Tag } from "lucide-react"
 import { notFound } from "next/navigation"
+import type { ReactNode } from "react"
 
 import { AnimatedPage, Section } from "@/components/marketplace/animations/section"
 import { BackButton } from "@/components/marketplace/back-button"
 import { ActionButtons } from "@/components/marketplace/item-detail/action-buttons"
+import { ExpandableContentSection } from "@/components/marketplace/item-detail/expandable-content-section"
 import { ItemGallery } from "@/components/marketplace/item-detail/item-gallery"
 import { MobileActionBar } from "@/components/marketplace/item-detail/mobile-action-bar"
 import { PricingCard } from "@/components/marketplace/item-detail/pricing-card"
@@ -13,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 
 import { getCurrentUser } from "@/lib/api/auth/auth.server"
 import { getItemById } from "@/lib/api/items/server"
+import { getSimilarItems } from "@/lib/api/items/similar.server"
 
 interface Props {
   params: Promise<{
@@ -25,28 +28,39 @@ export default async function ItemDetailPage({ params }: Props) {
 
   const item = await getItemById(Number(id)).catch(() => null)
 
-  const user = await getCurrentUser().catch(() => null)
+if (!item) notFound()
 
-  if (!item) {
-    notFound()
-  }
+const [user, similarItems] = await Promise.all([
+  getCurrentUser().catch(() => null),
+
+  getSimilarItems(item, 3).catch((error) => {
+    console.error("Failed to load similar listings:", error)
+    return []
+  }),
+])
 
   const categoryLabel = item.category === "OTHER" ? item.customCategory || "Other" : formatEnum(item.category)
-
   const conditionLabel = formatEnum(item.condition)
-
   const listingType =
     item.forTrade && item.forSale ? "Trade / Sale" : item.forTrade ? "Trade only" : item.forSale ? "For sale" : "Unavailable"
-
   const locationLabel = [item.locality, item.city, item.state].filter(Boolean).join(", ")
-
   const createdAt = new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(item.createdAt))
 
+  // The backend groups these strings by priority. The product page keeps one
+  // simple Specification section rather than exposing three nested UI layers.
+  const specifications = [
+    ...(item.primarySpecifications ?? []),
+    ...(item.secondarySpecifications ?? []),
+    ...(item.tertiarySpecifications ?? []),
+  ]
+    .map((value) => value.trim())
+    .filter(Boolean)
+
   return (
-    <main className="pt-20 pb-32 lg:pb-16">
+    <main className="pb-32 pt-20 lg:pb-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <AnimatedPage>
           <Section>
@@ -62,21 +76,16 @@ export default async function ItemDetailPage({ params }: Props) {
 
               <Section>
                 <div className="content-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
-                  {/* HEADER */}
                   <div>
                     <div className="mb-4 flex flex-wrap gap-2">
                       {item.forTrade && item.forSale && (
                         <Badge className="border-none bg-gradient-to-r from-primary to-info text-primary-foreground">Trade / Sale</Badge>
                       )}
-
                       {item.forTrade && !item.forSale && (
                         <Badge className="border-none bg-primary/90 text-primary-foreground">Trade Only</Badge>
                       )}
-
                       {item.forSale && !item.forTrade && <Badge className="border-none bg-info/90 text-info-foreground">For Sale</Badge>}
-
                       <Badge variant="outline">{conditionLabel}</Badge>
-
                       {!item.available && (
                         <Badge variant="outline" className="border-amber-400/20 text-amber-300">
                           Currently unavailable
@@ -85,13 +94,11 @@ export default async function ItemDetailPage({ params }: Props) {
                     </div>
 
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{item.itemName}</h1>
-
                     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <CalendarDays className="h-4 w-4" />
                         Listed {createdAt}
                       </span>
-
                       {locationLabel && (
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-4 w-4" />
@@ -101,14 +108,10 @@ export default async function ItemDetailPage({ params }: Props) {
                     </div>
                   </div>
 
-                  {/* QUICK DETAILS */}
                   <div className="mt-5 grid gap-2 sm:grid-cols-4">
                     <InfoTile icon={<Package className="h-4 w-4" />} label="Category" value={categoryLabel} tone="blue" />
-
                     <InfoTile icon={<Tag className="h-4 w-4" />} label="Condition" value={conditionLabel} tone="violet" />
-
                     <InfoTile icon={<Clock className="h-4 w-4" />} label="Listing" value={listingType} tone="gold" />
-
                     <InfoTile
                       icon={<Package className="h-4 w-4" />}
                       label="Availability"
@@ -117,24 +120,29 @@ export default async function ItemDetailPage({ params }: Props) {
                     />
                   </div>
 
-                  {/* DESCRIPTION */}
-                  <div className="mt-8">
-                    <div className="mb-2 flex items-center justify-between gap-4">
-                      <h2 className="font-semibold">Description</h2>
-                    </div>
-
+                  <ExpandableContentSection title="Description">
                     {item.description?.trim() ? (
-                      <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{item.description}</p>
+                      <p className="whitespace-pre-line">{item.description}</p>
                     ) : (
-                      <p className="text-sm italic text-muted-foreground">No additional description was provided.</p>
+                      <p className="italic">No additional description was provided.</p>
                     )}
-                  </div>
+                  </ExpandableContentSection>
 
-                  {/* LABELS */}
+                  <ExpandableContentSection title="Specifications" className="mt-6">
+                    {specifications.length > 0 ? (
+                      <ul className="list-disc space-y-1 pl-5">
+                        {specifications.map((specification, index) => (
+                          <li key={`${index}-${specification}`}>{specification}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="italic">No specifications were provided.</p>
+                    )}
+                  </ExpandableContentSection>
+
                   {item.labels?.length > 0 && (
-                    <div className="mt-8">
+                    <div className="mt-7">
                       <h2 className="mb-3 font-semibold">Tags</h2>
-
                       <div className="flex flex-wrap gap-2">
                         {item.labels.map((label) => (
                           <Badge key={label} variant="secondary" className="border border-white/[0.06] bg-white/[0.03]">
@@ -152,7 +160,7 @@ export default async function ItemDetailPage({ params }: Props) {
               </Section>
 
               <Section>
-                <SimilarItems />
+                <SimilarItems items={similarItems} />
               </Section>
             </div>
 
@@ -162,11 +170,9 @@ export default async function ItemDetailPage({ params }: Props) {
                 <Section>
                   <PricingCard item={item} />
                 </Section>
-
                 <Section>
                   <ActionButtons item={item} userId={user?.id ?? null} />
                 </Section>
-
                 <Section>
                   <MobileActionBar price={item.userPrice} itemId={item.itemId} />
                 </Section>
@@ -185,7 +191,7 @@ function InfoTile({
   value,
   tone,
 }: {
-  icon: React.ReactNode
+  icon: ReactNode
   label: string
   value: string
   tone: "blue" | "violet" | "gold" | "success" | "warning"
@@ -201,7 +207,6 @@ function InfoTile({
   return (
     <div className={`marketplace-attribute ${toneClass}`}>
       <span className="marketplace-attribute-icon">{icon}</span>
-
       <div className="marketplace-attribute-copy">
         <p className="marketplace-attribute-label">{label}</p>
         <p className="marketplace-attribute-value">{value}</p>

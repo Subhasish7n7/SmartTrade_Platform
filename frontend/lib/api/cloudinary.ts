@@ -91,9 +91,7 @@ export async function uploadImage(file: File, purpose: CloudinaryUploadPurpose):
   const formData = new FormData()
   formData.append("file", compressed, "smarttrade.webp")
   formData.append("upload_preset", preset)
-  if (purpose === "item") {
-    formData.append("tags", "smarttrade_temp")
-  }
+  formData.append("tags", "smarttrade_temp")
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: formData })
 

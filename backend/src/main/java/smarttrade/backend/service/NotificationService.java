@@ -17,6 +17,7 @@ import smarttrade.backend.entities.notification.NotificationType;
 import smarttrade.backend.repository.NotificationRepo;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.websocket.ActiveConversationRegistry;
+import smarttrade.backend.service.user.UserPreferenceService;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final AuthenticatedUserService authenticatedUserService;
     private final ActiveConversationRegistry activeConversationRegistry;
+    private final UserPreferenceService userPreferenceService;
 
     /*
      ----------------------------------------------------------
@@ -38,7 +40,7 @@ public class NotificationService {
     public Page<NotificationResponse> getNotifications(int page, int size) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
-        size = Math.min(size,100);
+        size = Math.min(size, 100);
 
         return notificationRepo
                 .findByRecipient_UserIdOrderByCreatedAtDesc(
@@ -47,6 +49,7 @@ public class NotificationService {
                 )
                 .map(notificationMapper::map);
     }
+
     public NotificationCountResponse getNotificationCounts() {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
@@ -79,6 +82,7 @@ public class NotificationService {
 
         notificationRepo.markRead(id, currentUser.getUserId());
     }
+
     public void markModuleRead(NotificationResourceType resourceType) {
 
         UserEntity currentUser =
@@ -89,6 +93,7 @@ public class NotificationService {
                 resourceType
         );
     }
+
     public void delete(Long id) {
 
         UserEntity currentUser = authenticatedUserService.getCurrentUser();
@@ -125,7 +130,7 @@ public class NotificationService {
         );
     }
 
-    public void notifyTradeAccepted( UserEntity actor, UserEntity receiver, Long tradeId) {
+    public void notifyTradeAccepted(UserEntity actor, UserEntity receiver, Long tradeId) {
 
         createNotification(
                 receiver,
@@ -148,6 +153,7 @@ public class NotificationService {
                 actor.getName() + " cancelled the trade."
         );
     }
+
     public void notifyTradeExpired(UserEntity recipient, UserEntity actor, Long tradeId) {
 
         createNotification(
@@ -249,9 +255,13 @@ public class NotificationService {
      */
 
     private void createNotification(UserEntity recipient, UserEntity actor,
-            NotificationType type, NotificationResourceType resourceType, Long resourceId, String message) {
+                                    NotificationType type, NotificationResourceType resourceType, Long resourceId, String message) {
 
         if (actor != null && actor.getUserId().equals(recipient.getUserId())) {
+            return;
+        }
+
+        if (!userPreferenceService.isNotificationEnabled(recipient.getUserId(), type)) {
             return;
         }
 

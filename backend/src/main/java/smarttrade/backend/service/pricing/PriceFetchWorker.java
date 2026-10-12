@@ -25,7 +25,10 @@ public class PriceFetchWorker {
                             job.itemName(),
                             job.category(),
                             job.customCategory(),
-                            job.labels()
+                            job.labels(),
+                            job.primarySpecifications(),
+                            job.secondarySpecifications(),
+                            job.tertiarySpecifications()
                     );
 
             itemPricingService.completePricing(

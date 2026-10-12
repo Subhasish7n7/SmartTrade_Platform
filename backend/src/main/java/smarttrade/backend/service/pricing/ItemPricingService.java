@@ -7,8 +7,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.events.ItemPriceUpdatedEvent;
-import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.events.itemPriceFetch.ItemPriceUpdatedEvent;
+import smarttrade.backend.repository.item.ItemRepo;
 
 import java.time.LocalDateTime;
 

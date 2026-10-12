@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class SellerSummaryDto {
     private Long userId;
     private String name;
+    private String avatar;
     private Double trustScore;
     private Integer totalListings;
     private Integer successfulTrades;

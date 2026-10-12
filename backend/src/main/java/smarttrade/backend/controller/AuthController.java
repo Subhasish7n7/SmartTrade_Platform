@@ -4,46 +4,36 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 import smarttrade.backend.Mappers.UserMapper;
-import org.springframework.security.web.csrf.CsrfToken;
-import smarttrade.backend.dto.auth.CsrfResponse;
-import smarttrade.backend.dto.auth.CurrentUserResponse;
-import smarttrade.backend.dto.auth.LoginRequest;
-import smarttrade.backend.dto.auth.RegisterRequest;
+import smarttrade.backend.dto.auth.*;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.service.auth.AuthService;
+import smarttrade.backend.service.auth.PasswordService;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
     private final AuthService authService;
+    private final PasswordService passwordService;
     private final AuthenticatedUserService authenticatedUserService;
     private final UserMapper userMapper;
     private final CookieService cookieService;
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(
-            @RequestBody RegisterRequest request,
-            HttpServletResponse response) {
-
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         String token = authService.register(request);
-
         cookieService.setJwtCookie(response, token);
-
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request,
-                                      HttpServletResponse response) {
-
+    public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         String token = authService.login(request);
         cookieService.setJwtCookie(response, token);
-
         return ResponseEntity.ok().build();
     }
 
@@ -55,12 +45,31 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public ResponseEntity<CsrfResponse> csrf(CsrfToken csrfToken) {
-
         return ResponseEntity.ok(new CsrfResponse(csrfToken.getToken()));
     }
 
     @GetMapping("/me")
     public ResponseEntity<CurrentUserResponse> getCurrentUser() {
         return ResponseEntity.ok(userMapper.mapToCurrentUser(authenticatedUserService.getCurrentUser()));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                               HttpServletResponse response) {
+        String token = passwordService.changePassword(request);
+        cookieService.setJwtCookie(response, token);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordService.requestPasswordReset(request.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordService.resetPassword(request);
+        return ResponseEntity.ok().build();
     }
 }

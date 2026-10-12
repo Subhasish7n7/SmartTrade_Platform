@@ -18,8 +18,8 @@ import org.testcontainers.utility.DockerImageName;
 import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.entities.user.UserAvatarEntity;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.UserAvatarRepo;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.repository.user.UserAvatarRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.CookieService;
 import smarttrade.backend.security.JwtService;
 
@@ -88,6 +88,7 @@ public class AuthControllerIntegrationTest {
         userRepo.deleteAll();
         userRepo.flush();
     }
+
     private UserEntity saveUserWithAvatar(UserEntity user) {
 
         UserAvatarEntity avatar = user.getAvatar();

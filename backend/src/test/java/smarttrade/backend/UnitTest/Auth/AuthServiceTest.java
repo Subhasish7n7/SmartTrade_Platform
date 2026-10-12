@@ -13,9 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import smarttrade.backend.dto.auth.LoginRequest;
 import smarttrade.backend.dto.auth.RegisterRequest;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.UserRepo;
+import smarttrade.backend.repository.user.UserRepo;
 import smarttrade.backend.security.JwtService;
 import smarttrade.backend.service.auth.AuthService;
+import smarttrade.backend.service.mail.EmailService;
+import smarttrade.backend.service.user.UserPreferenceService;
 
 import java.util.Optional;
 
@@ -40,6 +42,12 @@ public class AuthServiceTest {
 
     @InjectMocks
     private AuthService authService;
+    
+    @Mock
+    private UserPreferenceService userPreferenceService;
+
+    @Mock
+    private EmailService emailService;
 
     private RegisterRequest registerRequest;
     private LoginRequest loginRequest;

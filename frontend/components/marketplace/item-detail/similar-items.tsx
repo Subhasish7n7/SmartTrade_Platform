@@ -1,21 +1,57 @@
-import Link from "next/link"
-import { MarketplaceItemCard } from "@/components/marketplace/item-card"
-import { demoItem } from "@/lib/mock/item-detail"
 
-export function SimilarItems() {
-  const items = [demoItem, demoItem, demoItem]
+import Link from "next/link"
+
+import { MarketplaceItemCard } from "@/components/marketplace/item-card"
+import type { ItemResponse } from "@/lib/types/api/item"
+
+interface Props {
+  items: ItemResponse[]
+}
+
+export function SimilarItems({ items }: Props) {
+  const visibleItems = items
+    .filter(
+      (item) =>
+        item.available && (item.forSale || item.forTrade),
+    )
+    .slice(0, 3)
+
+  if (visibleItems.length === 0) {
+    return null
+  }
 
   return (
-    <div>
-      <div className="divider-label mb-6">Similar Items</div>
+    <section>
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Marketplace</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4">
-        {items.map((item, index) => (
-          <Link key={index} href={`/item/${index + 2}`} className="transition-transform hover:-translate-y-1">
+          <h2 className="mt-2 text-xl font-bold tracking-tight">
+            Similar listings
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Listings in the same category that may interest you.
+          </p>
+        </div>
+
+        <span className="hidden rounded-full border border-border/50 bg-white/[0.02] px-2.5 py-1 text-[11px] text-muted-foreground sm:inline-flex">
+          {visibleItems.length}{" "}
+          {visibleItems.length === 1 ? "match" : "matches"}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {visibleItems.map((item) => (
+          <Link
+            key={item.itemId}
+            href={`/item/${item.itemId}`}
+            className="group block rounded-2xl outline-none transition-transform hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary/60"
+          >
             <MarketplaceItemCard item={item} />
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

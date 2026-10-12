@@ -17,7 +17,10 @@ import smarttrade.backend.dto.user.PublicUserProfileResponse;
 import smarttrade.backend.dto.user.UserDto;
 import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.security.AuthenticatedUserService;
-import smarttrade.backend.service.UserService;
+import smarttrade.backend.service.user.UserPreferenceService;
+import smarttrade.backend.service.user.UserService;
+import smarttrade.backend.entities.user.UserPreferenceEntity;
+import smarttrade.backend.entities.user.ProfileVisibility;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +28,8 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 public class UserControllerTest {
@@ -38,6 +42,9 @@ public class UserControllerTest {
 
     @Mock
     private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
+    private UserPreferenceService userPreferenceService;
 
     @InjectMocks
     private UserController userController;
@@ -152,14 +159,24 @@ public class UserControllerTest {
         when(userService.GetUser(1L)).thenReturn(Optional.of(user));
         when(userMapper.mapToPublicProfile(user)).thenReturn(response);
 
+        when(userPreferenceService.getForUser(user))
+                .thenReturn(
+                        UserPreferenceEntity.builder()
+                                .user(user)
+                                .profileVisibility(ProfileVisibility.PUBLIC)
+                                .build()
+                );
+
         mockMvc.perform(get("/users/1/profile"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value(user.getName()))
-                .andExpect(jsonPath("$.avatarUrl").value(user.getAvatar().getSecureUrl()))
+                .andExpect(jsonPath("$.avatarUrl")
+                        .value(user.getAvatar().getSecureUrl()))
                 .andExpect(jsonPath("$.trustScore").value(user.getTrustScore()))
                 .andExpect(jsonPath("$.totalListings").value(user.getTotalListings()))
-                .andExpect(jsonPath("$.successfulTrades").value(user.getSuccessfulTrades()));
+                .andExpect(jsonPath("$.successfulTrades")
+                        .value(user.getSuccessfulTrades()));
     }
 
     @Test

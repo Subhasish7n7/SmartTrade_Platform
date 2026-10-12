@@ -1,16 +1,13 @@
 package smarttrade.backend.security;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import smarttrade.backend.entities.user.UserEntity;
-import smarttrade.backend.repository.UserRepo;
-
-import java.util.List;
+import smarttrade.backend.repository.user.UserRepo;
 
 @Service
 @RequiredArgsConstructor
@@ -26,18 +23,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() ->
                         new UsernameNotFoundException("User not found"));
 
-        /*
-            Spring Security's internal User object.
-
-            Parameters:
-            - email
-            - encoded password
-            - roles/authorities
-        */
-        return new User(
-                user.getEmail(),
-                user.getPassword(),
-                List.of(new SimpleGrantedAuthority("USER"))
-        );
+        return User.withUsername(user.getEmail())
+                .password(user.getPassword())
+                .authorities("ROLE_" + user.getRole().name())
+                .disabled(user.getAccountStatus().name().equals("SUSPENDED"))
+                .build();
     }
 }

@@ -7,7 +7,7 @@ import smarttrade.backend.dto.chat.ChatPresenceEvent;
 import smarttrade.backend.dto.chat.ChatPresenceEventType;
 import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.entities.chat.ChatConversationEntity;
-import smarttrade.backend.repository.ChatConversationRepo;
+import smarttrade.backend.repository.chat.ChatConversationRepo;
 
 @Component
 @RequiredArgsConstructor

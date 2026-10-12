@@ -23,6 +23,7 @@ public class ChatController {
 
         chatService.sendMessage(request.getOtherUserId(), request.getMessage());
     }
+
     @MessageMapping("/chat.presence")
     public void updatePresence(ConversationPresenceRequest request, SimpMessageHeaderAccessor accessor) {
 
@@ -31,16 +32,16 @@ public class ChatController {
 
     @GetMapping("/chat/{otherUserId}/messages")
     public Page<ChatMessageResponse> getMessages(@PathVariable Long otherUserId,
-                                                 @RequestParam(defaultValue="0") int page,
-                                                 @RequestParam(defaultValue="40") int size
-    ){
+                                                 @RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "40") int size
+    ) {
 
         return chatService.getConversation(otherUserId, page, size);
     }
 
     @GetMapping("/chat/inbox")
-    public List<ChatConversationResponse> getInbox() {
-        return chatService.getInbox();
+    public List<ChatConversationResponse> getInbox(@RequestParam(required = false) Long otherUserId) {
+        return chatService.getInbox(otherUserId);
     }
 
     @PutMapping("/chat/{otherUserId}/pin")

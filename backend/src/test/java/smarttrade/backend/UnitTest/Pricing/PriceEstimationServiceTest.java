@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -17,16 +16,21 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemCondition;
+import smarttrade.backend.service.pricing.PriceCandidateMatcher;
 import smarttrade.backend.service.pricing.PriceEstimationService;
 import smarttrade.backend.service.pricing.PricingFetchResult;
 import smarttrade.backend.service.pricing.PricingFetchStatus;
+import smarttrade.backend.service.pricing.WeightedPriceAggregator;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PriceEstimationServiceTest {
@@ -34,13 +38,19 @@ class PriceEstimationServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
     private PriceEstimationService priceEstimationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
+        // Use real matching and aggregation logic; only the external HTTP call is mocked.
+        priceEstimationService = new PriceEstimationService(
+                restTemplate,
+                new PriceCandidateMatcher(),
+                new WeightedPriceAggregator()
+        );
+
         ReflectionTestUtils.setField(priceEstimationService, "serpApiKey", "test-key");
         ReflectionTestUtils.setField(priceEstimationService, "apiEnabled", true);
         ReflectionTestUtils.setField(priceEstimationService, "googleDomain", "google.co.in");
@@ -50,20 +60,16 @@ class PriceEstimationServiceTest {
 
     @Test
     void shouldRejectMissingItemName() {
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        " ",
-                        ItemCategory.PHONES,
-                        null,
-                        List.of("android")
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                " ",
+                ItemCategory.PHONES,
+                null,
+                List.of("android")
+        );
 
         assertEquals(PricingFetchStatus.INVALID_CONFIGURATION, result.status());
         assertEquals("ITEM_NAME_MISSING", result.errorCode());
-        assertEquals(
-                "Item name is required for market pricing.",
-                result.errorMessage()
-        );
+        assertEquals("Item name is required for market pricing.", result.errorMessage());
 
         verifyNoInteractions(restTemplate);
     }
@@ -72,13 +78,12 @@ class PriceEstimationServiceTest {
     void shouldRejectWhenApiIsDisabled() {
         ReflectionTestUtils.setField(priceEstimationService, "apiEnabled", false);
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "iPhone 15",
-                        ItemCategory.PHONES,
-                        null,
-                        List.of("apple")
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "iPhone 15",
+                ItemCategory.PHONES,
+                null,
+                List.of("apple")
+        );
 
         assertEquals(PricingFetchStatus.INVALID_CONFIGURATION, result.status());
         assertEquals("SERP_API_DISABLED", result.errorCode());
@@ -90,13 +95,12 @@ class PriceEstimationServiceTest {
     void shouldRejectWhenApiKeyIsMissing() {
         ReflectionTestUtils.setField(priceEstimationService, "serpApiKey", " ");
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "iPhone 15",
-                        ItemCategory.PHONES,
-                        null,
-                        List.of("apple")
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "iPhone 15",
+                ItemCategory.PHONES,
+                null,
+                List.of("apple")
+        );
 
         assertEquals(PricingFetchStatus.INVALID_CONFIGURATION, result.status());
         assertEquals("SERP_API_KEY_MISSING", result.errorCode());
@@ -105,16 +109,16 @@ class PriceEstimationServiceTest {
     }
 
     @Test
-    void shouldReturnMedianOfUsableNewProductPrices() throws Exception {
+    void shouldReturnWeightedMedianOfUsableNewProductPrices() throws Exception {
         JsonNode body = objectMapper.readTree("""
                 {
                   "shopping_results": [
-                    {"extracted_price": 1000},
-                    {"extracted_price": 5000},
-                    {"extracted_price": 3000},
-                    {"extracted_price": 4000, "second_hand_condition": "refurbished"},
-                    {"extracted_price": 0},
-                    {"extracted_price": -10}
+                    {"title": "Apple iPhone 15", "extracted_price": 1000},
+                    {"title": "Apple iPhone 15", "extracted_price": 5000},
+                    {"title": "Apple iPhone 15", "extracted_price": 3000},
+                    {"title": "Apple iPhone 15", "extracted_price": 4000, "second_hand_condition": "refurbished"},
+                    {"title": "Apple iPhone 15", "extracted_price": 0},
+                    {"title": "Apple iPhone 15", "extracted_price": -10}
                   ]
                 }
                 """);
@@ -122,29 +126,23 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        " iPhone 15 ",
-                        ItemCategory.PHONES,
-                        null,
-                        List.of(" Apple ", "5G")
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                " iPhone 15 ",
+                ItemCategory.PHONES,
+                null,
+                List.of(" Apple ", "5G")
+        );
 
         assertEquals(PricingFetchStatus.SUCCESS, result.status());
         assertEquals(3000, result.price());
         assertEquals(200, result.httpStatus());
 
-        ArgumentCaptor<String> urlCaptor =
-                ArgumentCaptor.forClass(String.class);
-
-        verify(restTemplate).getForEntity(
-                urlCaptor.capture(),
-                eq(JsonNode.class)
-        );
+        ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate).getForEntity(urlCaptor.capture(), eq(JsonNode.class));
 
         String url = urlCaptor.getValue();
-        assertTrue(url.contains("iPhone%2015"));
-        assertTrue(url.contains("phones"));
+        // Queries are normalized to lowercase before being sent to SerpApi.
+        assertTrue(url.contains("q=iphone%2015"));
         assertTrue(url.contains("google_domain=google.co.in"));
         assertTrue(url.contains("gl=in"));
         assertTrue(url.contains("hl=en"));
@@ -152,14 +150,14 @@ class PriceEstimationServiceTest {
     }
 
     @Test
-    void shouldRoundEvenNumberMedian() throws Exception {
+    void shouldReturnLowerWeightedMedianForEvenNumberOfEquallyWeightedCandidates() throws Exception {
         JsonNode body = objectMapper.readTree("""
                 {
                   "shopping_results": [
-                    {"extracted_price": 1000},
-                    {"extracted_price": 2000},
-                    {"extracted_price": 3000},
-                    {"extracted_price": 4000}
+                    {"title": "Dell Inspiron 15 Laptop", "extracted_price": 1000},
+                    {"title": "Dell Inspiron 15 Laptop", "extracted_price": 2000},
+                    {"title": "Dell Inspiron 15 Laptop", "extracted_price": 3000},
+                    {"title": "Dell Inspiron 15 Laptop", "extracted_price": 4000}
                   ]
                 }
                 """);
@@ -167,24 +165,25 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Dell Inspiron 15 Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.SUCCESS, result.status());
-        assertEquals(2500, result.price());
+        // WeightedPriceAggregator returns the first candidate whose cumulative
+        // weight reaches half the total. With four equal weights, this is 2000.
+        assertEquals(2000, result.price());
     }
 
     @Test
-    void shouldPreferCustomCategoryOverEnumCategoryInQuery() throws Exception {
+    void shouldUseItemNameForShoppingQueryAndKeepCategoryAsMatchingContext() throws Exception {
         JsonNode body = objectMapper.readTree("""
                 {
                   "shopping_results": [
-                    {"extracted_price": 1000}
+                    {"title": "MacBook Pro Laptop", "extracted_price": 1000}
                   ]
                 }
                 """);
@@ -192,23 +191,22 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        priceEstimationService.fetchEstimatedNewPrice(
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
                 "MacBook Pro",
                 ItemCategory.COMPUTERS,
                 "professional laptop",
                 List.of()
         );
 
-        ArgumentCaptor<String> urlCaptor =
-                ArgumentCaptor.forClass(String.class);
+        assertEquals(PricingFetchStatus.SUCCESS, result.status());
 
-        verify(restTemplate).getForEntity(
-                urlCaptor.capture(),
-                eq(JsonNode.class)
-        );
+        ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate).getForEntity(urlCaptor.capture(), eq(JsonNode.class));
 
         String url = urlCaptor.getValue();
-        assertTrue(url.contains("professional%20laptop"));
+        assertTrue(url.contains("q=macbook%20pro"));
+        // The current service intentionally does not send category context to Google.
+        assertFalse(url.contains("professional%20laptop"));
     }
 
     @Test
@@ -216,13 +214,12 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.PROVIDER_ERROR, result.status());
         assertEquals("EMPTY_PROVIDER_RESPONSE", result.errorCode());
@@ -240,13 +237,12 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.PROVIDER_ERROR, result.status());
         assertEquals("SERP_API_ERROR", result.errorCode());
@@ -266,13 +262,12 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.NO_RESULTS, result.status());
         assertEquals("SHOPPING_RESULTS_MISSING", result.errorCode());
@@ -283,7 +278,6 @@ class PriceEstimationServiceTest {
         JsonNode body = objectMapper.readTree("""
                 {
                   "shopping_results": [
-                    {"second_hand_condition": "used", "extracted_price": 1000},
                     {"extracted_price": 0},
                     {"extracted_price": -100},
                     {"extracted_price": "not-a-number"}
@@ -294,16 +288,44 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.NO_RESULTS, result.status());
         assertEquals("NO_USABLE_PRICES", result.errorCode());
+    }
+
+    @Test
+    void shouldReturnNoRelevantCandidatesWhenOnlyPositivePricedCandidateIsUsed() throws Exception {
+        JsonNode body = objectMapper.readTree("""
+                {
+                  "shopping_results": [
+                    {
+                      "title": "Dell Inspiron 15 Laptop",
+                      "second_hand_condition": "used",
+                      "extracted_price": 1000
+                    }
+                  ]
+                }
+                """);
+
+        when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Dell Inspiron 15 Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
+
+        // There is a positive price, but the only candidate is rejected as used.
+        assertEquals(PricingFetchStatus.NO_RELEVANT_CANDIDATES, result.status());
+        assertEquals("NO_RELEVANT_CANDIDATES", result.errorCode());
     }
 
     @Test
@@ -314,23 +336,20 @@ class PriceEstimationServiceTest {
                 null,
                 "bad-key".getBytes(StandardCharsets.UTF_8),
                 StandardCharsets.UTF_8
-        ) {};
+        ) {
+        };
 
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(exception);
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
-
-        assertEquals(
-                PricingFetchStatus.AUTHENTICATION_FAILED,
-                result.status()
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
         );
+
+        assertEquals(PricingFetchStatus.AUTHENTICATION_FAILED, result.status());
         assertEquals("SERP_API_AUTHENTICATION", result.errorCode());
         assertEquals(401, result.httpStatus());
     }
@@ -340,18 +359,18 @@ class PriceEstimationServiceTest {
         HttpStatusCodeException exception = new HttpStatusCodeException(
                 HttpStatus.TOO_MANY_REQUESTS,
                 "Rate limited"
-        ) {};
+        ) {
+        };
 
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(exception);
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.RATE_LIMITED, result.status());
         assertEquals("SERP_API_RATE_LIMITED", result.errorCode());
@@ -363,18 +382,18 @@ class PriceEstimationServiceTest {
         HttpStatusCodeException exception = new HttpStatusCodeException(
                 HttpStatus.BAD_REQUEST,
                 "Bad request"
-        ) {};
+        ) {
+        };
 
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(exception);
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.BAD_REQUEST, result.status());
         assertEquals("SERP_API_BAD_REQUEST", result.errorCode());
@@ -386,18 +405,18 @@ class PriceEstimationServiceTest {
         HttpStatusCodeException exception = new HttpStatusCodeException(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Provider error"
-        ) {};
+        ) {
+        };
 
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(exception);
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.PROVIDER_ERROR, result.status());
         assertEquals("SERP_API_HTTP_500", result.errorCode());
@@ -409,13 +428,12 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(new ResourceAccessException("timeout"));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.NETWORK_ERROR, result.status());
         assertEquals("SERP_API_NETWORK_ERROR", result.errorCode());
@@ -426,13 +444,12 @@ class PriceEstimationServiceTest {
         when(restTemplate.getForEntity(anyString(), eq(JsonNode.class)))
                 .thenThrow(new RuntimeException("unexpected"));
 
-        PricingFetchResult result =
-                priceEstimationService.fetchEstimatedNewPrice(
-                        "Laptop",
-                        ItemCategory.COMPUTERS,
-                        null,
-                        null
-                );
+        PricingFetchResult result = priceEstimationService.fetchEstimatedNewPrice(
+                "Laptop",
+                ItemCategory.COMPUTERS,
+                null,
+                null
+        );
 
         assertEquals(PricingFetchStatus.PROVIDER_ERROR, result.status());
         assertEquals("SERP_API_UNEXPECTED_ERROR", result.errorCode());
@@ -440,64 +457,17 @@ class PriceEstimationServiceTest {
 
     @Test
     void shouldGenerateUsedPriceForEveryCondition() {
-        assertEquals(
-                950,
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        ItemCondition.NEW
-                )
-        );
-        assertEquals(
-                850,
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        ItemCondition.LIKE_NEW
-                )
-        );
-        assertEquals(
-                700,
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        ItemCondition.GOOD
-                )
-        );
-        assertEquals(
-                500,
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        ItemCondition.FAIR
-                )
-        );
-        assertEquals(
-                350,
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        ItemCondition.POOR
-                )
-        );
+        assertEquals(950, priceEstimationService.generateUsedPrice(1000, ItemCondition.NEW));
+        assertEquals(850, priceEstimationService.generateUsedPrice(1000, ItemCondition.LIKE_NEW));
+        assertEquals(700, priceEstimationService.generateUsedPrice(1000, ItemCondition.GOOD));
+        assertEquals(500, priceEstimationService.generateUsedPrice(1000, ItemCondition.FAIR));
+        assertEquals(350, priceEstimationService.generateUsedPrice(1000, ItemCondition.POOR));
     }
 
     @Test
     void shouldReturnNullWhenUsedPriceInputsAreMissing() {
-        assertNull(
-                priceEstimationService.generateUsedPrice(
-                        null,
-                        ItemCondition.GOOD
-                )
-        );
-
-        assertNull(
-                priceEstimationService.generateUsedPrice(
-                        1000,
-                        null
-                )
-        );
-
-        assertNull(
-                priceEstimationService.generateUsedPrice(
-                        null,
-                        null
-                )
-        );
+        assertNull(priceEstimationService.generateUsedPrice(null, ItemCondition.GOOD));
+        assertNull(priceEstimationService.generateUsedPrice(1000, null));
+        assertNull(priceEstimationService.generateUsedPrice(null, null));
     }
 }

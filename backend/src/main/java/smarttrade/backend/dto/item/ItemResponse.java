@@ -29,6 +29,9 @@ public class ItemResponse {
     private ItemCategory category;
     private ItemCondition condition;
     private String customCategory;
+    private List<String> primarySpecifications;
+    private List<String> secondarySpecifications;
+    private List<String> tertiarySpecifications;
     private List<String> labels;
     private List<ItemImageResponse> images;
     private Double latitude;

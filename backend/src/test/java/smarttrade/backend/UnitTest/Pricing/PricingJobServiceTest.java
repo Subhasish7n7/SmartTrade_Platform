@@ -10,7 +10,7 @@ import smarttrade.backend.entities.item.ItemCategory;
 import smarttrade.backend.entities.item.ItemCondition;
 import smarttrade.backend.entities.item.ItemEntity;
 import smarttrade.backend.entities.item.ItemPricingStatus;
-import smarttrade.backend.repository.ItemRepo;
+import smarttrade.backend.repository.item.ItemRepo;
 import smarttrade.backend.service.pricing.PricingJobDecision;
 import smarttrade.backend.service.pricing.PricingJobRequest;
 import smarttrade.backend.service.pricing.PricingJobService;
