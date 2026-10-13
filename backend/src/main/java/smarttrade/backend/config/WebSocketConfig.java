@@ -9,7 +9,6 @@ import org.springframework.security.messaging.context.SecurityContextChannelInte
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
-import smarttrade.backend.security.WebSocketAuthHandshakeInterceptor;
 import smarttrade.backend.security.WebSocketChannelInterceptor;
 
 @Configuration
@@ -17,7 +16,6 @@ import smarttrade.backend.security.WebSocketChannelInterceptor;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final WebSocketAuthHandshakeInterceptor handshakeInterceptor;
     private final WebSocketChannelInterceptor channelInterceptor;
 
     @Value("${frontend.url}")
@@ -25,33 +23,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-
         config.enableSimpleBroker("/queue");
-
         config.setApplicationDestinationPrefixes("/app");
-
         config.setUserDestinationPrefix("/user");
-
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-
         registry.addEndpoint("/ws")
-                .addInterceptors(handshakeInterceptor)
                 .setAllowedOrigins(frontendUrl)
                 .withSockJS();
-
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-
         registration.interceptors(
                 channelInterceptor,
                 new SecurityContextChannelInterceptor()
         );
-
     }
-
 }

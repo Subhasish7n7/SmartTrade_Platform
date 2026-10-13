@@ -6,16 +6,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import smarttrade.backend.Mappers.UserMapper;
 import smarttrade.backend.TestDataUtil.userTestData;
 import smarttrade.backend.controller.AuthController;
 import smarttrade.backend.dto.auth.CurrentUserResponse;
+import smarttrade.backend.dto.auth.WebSocketTicketResponse;
 import smarttrade.backend.entities.user.UserEntity;
 import smarttrade.backend.security.AuthenticatedUserService;
 import smarttrade.backend.security.CookieService;
+import smarttrade.backend.security.SpaCsrfTokenRequestHandler;
+import smarttrade.backend.security.WebSocketTicketService;
 import smarttrade.backend.service.auth.AuthService;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -25,10 +27,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import smarttrade.backend.security.SpaCsrfTokenRequestHandler;
+import smarttrade.backend.service.auth.PasswordService;
 
 @ExtendWith(MockitoExtension.class)
-public class AuthControllerTest {
+class AuthControllerTest {
 
     @Mock
     private AuthService authService;
@@ -42,19 +44,21 @@ public class AuthControllerTest {
     @Mock
     private CookieService cookieService;
 
+    @Mock
+    private WebSocketTicketService webSocketTicketService;
+
+    @Mock
+    private PasswordService passwordService;
+
     @InjectMocks
     private AuthController authController;
 
     private MockMvc mockMvc;
-
     private UserEntity user;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(authController)
-                .build();
-
+        mockMvc = MockMvcBuilders.standaloneSetup(authController).build();
         user = userTestData.CreateUserA();
         user.setUserId(1L);
     }
@@ -63,18 +67,16 @@ public class AuthControllerTest {
     void shouldRegisterAndSetJwtCookie() throws Exception {
         when(authService.register(any())).thenReturn("jwt-token");
 
-        mockMvc.perform(
-                        post("/auth/register")
-                                .contentType("application/json")
-                                .content("""
-                                        {
-                                          "email": "user@test.com",
-                                          "name": "Test User",
-                                          "password": "password",
-                                          "phone_no": "9876543210"
-                                        }
-                                        """)
-                )
+        mockMvc.perform(post("/auth/register")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "email": "user@test.com",
+                                  "name": "Test User",
+                                  "password": "password",
+                                  "phone_no": "9876543210"
+                                }
+                                """))
                 .andExpect(status().isOk());
 
         verify(authService).register(any());
@@ -85,16 +87,14 @@ public class AuthControllerTest {
     void shouldLoginAndSetJwtCookie() throws Exception {
         when(authService.login(any())).thenReturn("jwt-token");
 
-        mockMvc.perform(
-                        post("/auth/login")
-                                .contentType("application/json")
-                                .content("""
-                                        {
-                                          "email": "user@test.com",
-                                          "password": "password"
-                                        }
-                                        """)
-                )
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "email": "user@test.com",
+                                  "password": "password"
+                                }
+                                """))
                 .andExpect(status().isOk());
 
         verify(authService).login(any());
@@ -103,16 +103,14 @@ public class AuthControllerTest {
 
     @Test
     void shouldRejectLoginWithInvalidEmail() throws Exception {
-        mockMvc.perform(
-                        post("/auth/login")
-                                .contentType("application/json")
-                                .content("""
-                                        {
-                                          "email": "not-an-email",
-                                          "password": "password"
-                                        }
-                                        """)
-                )
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "email": "not-an-email",
+                                  "password": "password"
+                                }
+                                """))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(authService, cookieService);
@@ -120,15 +118,13 @@ public class AuthControllerTest {
 
     @Test
     void shouldRejectLoginWithoutPassword() throws Exception {
-        mockMvc.perform(
-                        post("/auth/login")
-                                .contentType("application/json")
-                                .content("""
-                                        {
-                                          "email": "user@test.com"
-                                        }
-                                        """)
-                )
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "email": "user@test.com"
+                                }
+                                """))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(authService, cookieService);
@@ -144,15 +140,29 @@ public class AuthControllerTest {
 
     @Test
     void shouldReturnCsrfToken() throws Exception {
-        mockMvc.perform(
-                        get("/auth/csrf")
-                                .requestAttr(
-                                        SpaCsrfTokenRequestHandler.RAW_CSRF_TOKEN_ATTRIBUTE,
-                                        "csrf-token"
-                                )
-                )
+        mockMvc.perform(get("/auth/csrf")
+                        .requestAttr(
+                                SpaCsrfTokenRequestHandler.RAW_CSRF_TOKEN_ATTRIBUTE,
+                                "csrf-token"
+                        ))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("csrf-token"));
+    }
+
+    @Test
+    void shouldIssueWebSocketTicketWithoutCaching() throws Exception {
+        when(authenticatedUserService.getCurrentUser()).thenReturn(user);
+        when(webSocketTicketService.issueTicket(user.getEmail()))
+                .thenReturn(new WebSocketTicketResponse("test-ticket", 30));
+
+        mockMvc.perform(get("/auth/ws-ticket"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ticket").value("test-ticket"))
+                .andExpect(jsonPath("$.expiresInSeconds").value(30))
+                .andExpect(header().string(
+                        "Cache-Control",
+                        org.hamcrest.Matchers.containsString("no-store")
+                ));
     }
 
     @Test

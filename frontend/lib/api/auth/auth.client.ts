@@ -8,7 +8,6 @@ export async function login(request: LoginRequest) {
 }
 
 export async function register(request: RegisterRequest) {
-  console.log("this is the request", request)
   await clientApi.post("/auth/register", request)
 }
 
